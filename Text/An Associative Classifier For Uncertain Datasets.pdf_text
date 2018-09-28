@@ -1,0 +1,870 @@
+An Associative Classiﬁer For Uncertain Datasets
+
+Metanat Hooshsadat and Osmar R. Za¨ıane
+
+University of Alberta
+
+Edmonton, Alberta, Canada
+
+{hooshsad,zaiane}@cs.ualberta.ca
+
+Abstract. The classiﬁcation of uncertain datasets is an emerging re-
+search problem that has recently attracted signiﬁcant attention. Some
+attempts to devise a classiﬁcation model with uncertain training data
+have been proposed using decision trees, neural networks, or other ap-
+proaches. Among those, the associative classiﬁers have inspired some of
+the uncertain classiﬁcation algorithms given their promising results on
+standard datasets. We propose a novel associative classiﬁer for uncertain
+data. Our method, Uncertain Associative Classiﬁer (UAC) is eﬃcient
+and has an eﬀective rule pruning strategy. Our experimental results on
+real datasets show that in most cases, UAC reaches better accuracies
+than the state of the art algorithms.
+
+1
+
+Introduction
+
+Typical relational databases or databases in general hold collections of records
+representing facts. These facts are observations with known values stored in the
+ﬁelds of each tuple of the database. In other words, the observation represented
+by a record is assumed to have taken place and the attribute values are assumed
+to be true. We call these databases “certain database” because we are certain
+about the recorded data and their values. In contrast to “certain” data there is
+also “uncertain data”; data for which we may not be sure about the observation
+whether it really took place or not, or data for which the attribute values are
+not ascertained with 100% probability.
+
+Querying such data, particularly computing aggregations, ranking or discov-
+ering patterns in probabilistic data is a challenging feat. Many researchers have
+focused on uncertain databases, also called probabilistic databases, for managing
+uncertain data [1], top-k ranking uncertain data [2], querying uncertain data [3],
+or mining uncertain data [4, 5]. While many approches use an existancial uncer-
+tainty attached to a record as a whole, our model targets uncertain databases
+with probabilities attached to each attribute value.
+
+This paper addresses the problem of devising an accurate rule-based classi-
+ﬁer on uncertain training data. There are many classiﬁcation paradigms but the
+classiﬁers of interest to our study are rule-based. We opted for associative clas-
+siﬁers, classiﬁers using a model based on association rules, as they were shown
+to be highly accurate and competitive with other approaches [6].
+
+After brieﬂy reviewing related work for associative classiﬁcation as well as
+published work on classifying in the presence of uncertainty, we present in Section
+
+3 our novel classiﬁcation method UAC. Finally in Section 4 we present empirical
+evaluations comparing UAC with other published works.
+
+2 Related Works
+
+Recently, a considerable amount of studies in machine learning are directed to-
+ward the uncertain data classiﬁcation, including: TSVC [7] (inspired by SVM),
+DTU [8] (decision tree), UNN [9] (based on Neural Network), a Bayesian clas-
+siﬁer [10], uRule [11] (rule based), uHARMONY [12] and UCBA [13] (based
+on associative classiﬁers). However, models suggested by the previous work do
+not capture some possible types of uncertainty. In previous studies, numerical
+attributes are only modeled by intervals, while they may exist in other forms
+such as probability vectors. Categorical attributes are modeled by a probability
+distribution vector over their domain where the vector is unrealistically assumed
+to be completely known. We use a probability on each attribute value.
+
+High accuracy and strong ﬂexibility are some of the advantageous characteris-
+tics of the rule based classiﬁers. Investigating rule based uncertain data classiﬁers
+has been the theme of many studies. One of these studies is uRule [11], which
+deﬁnes the information gain metric in presence of uncertainty. The probability
+of each rule classifying the instance is computed based on the weighting system
+introduced by uRule.
+
+Associative classiﬁcation is a large category of rule based classiﬁcation in
+which the rule induction procedure is based on the association rule mining tech-
+nique. Some of the prominent associative classiﬁers are CBA [14], ARC [15], and
+CMAR [16]. In this paper, we introduce an associative classiﬁer for uncertain
+datasets, which is based on CBA. CBA is highly accurate, ﬂexible and eﬃcient
+both in time and memory [14].
+
+CBA directly adopts Apriori to mine the potential classiﬁcation rules or
+strong ruleitems from the data. Ruleitems are those association rules of form
+a → c, where the consequence (c) is a class label and the antecedent (a) is a
+set of attribute assignments. Each attribute assignment consists of an attribute
+and a value which belongs to the domain of that attribute. For example, if A1
+and A2 are two attributes and c is a class label, r = (A1 : u1, A2 : u2 → c) is
+a ruleitem. r implies that if A1 and A2 have values of u1 and u2 respectively,
+the class label should be c. A ruleitem is strong if its support and conﬁdence are
+above the predeﬁned thresholds.
+
+After mining the strong ruleitems, a large number of them are eliminated
+by applying the database coverage approach. This method of ﬁltering rules is
+applied by all rule-based classiﬁers, particularly associative classiﬁers. However,
+in the case of uncertain data, database coverage presents a signiﬁcant challenge.
+Rule based classiﬁers often need to evaluate various rules to pick the best ones.
+This level is critical in maintaining a high accuracy. The evaluation often involves
+the answer to the following question: To which training instances can a rule be
+applied? Yet, the answer is not obvious for uncertain datasets. Many uncertain
+dataset instances may satisfy the antecedent of a rule, each with a diﬀerent
+
+probability. Existing uncertain data rule based classiﬁers have suggested various
+answers to this problem.
+
+uHARMONY suggested a lower bound on the probability by which the in-
+stance satisﬁes the rule antecedent. This approach is simple and fast, but the
+diﬃculty or even impossibility of setting the threshold is a problem. This is ex-
+plained in more detail in Section 3.2. uRule suggested to remove the items in the
+antecedent of the rule from the instance, to leave only the uncovered part of the
+instance every time. In contrast to uHARMONY, this method uses the whole
+dataset but it may cause sensitivity to noise which is undesirable. UCBA, wich
+is based on CBA, does not include the uncertainty in the rule selection process;
+they select as many rules as possible. This method does not ﬁlter enough rules;
+so may decrease the accuracy.
+
+In UAC, we introduce a new solution to the coverage problem. This compu-
+tation does not increase the running time complexity and needs no extra passes
+over the dataset.
+
+3 UAC Algorithm
+
+In this section, we present our novel algorithm, UAC. Before applying UAC
+to uncertain numerical attributes in the train sets, they are ﬁrst transformed
+into uncertain categorical attributes using U-CAIM [10], assuming the normal
+distribution on the intervals. After discretization, the value of the i-th attribute
+for the j-th instance is a list of value-probability pairs, as shown in Equation 1.
+
+Aj,i = {(xj,i,1 : pj,i,1), (xj,i,2 : pj,i,2), .., (xj,i,k : pj,i,k)}
+∀q ≤ k ; Aj.l ≤ xj,i,q ≤ Aj.u Σk
+
+q=1 pj,i,q = 1.
+
+(1)
+
+Building an associative classiﬁer consists of two distinct steps: 1- Rule Ex-
+traction, 2- Rule Filtering. In this section each step of UAC is explained. Later,
+the procedure of classifying a new test instance is described.
+
+3.1 Rule Extraction
+
+In uncertain datasets, an association rule is considered strong if it is frequent and
+its conﬁdence (Conf ) is above a user deﬁned threshold called minimum conﬁ-
+dence. A ruleitem is frequent if its Expected Support (ES) is above a user deﬁned
+threshold called minimum expected support. The deﬁnitions of the expected sup-
+port and the conﬁdence are as follows.
+
+Deﬁnition If a is an itemset and c is a class label, expected support (ES)
+and conﬁdence (Conf) of a ruleitem are calculated by Equation 2. Here, the
+ruleitem is denoted by r = a → c and T is the set of all transactions.
+
+= Σ∀t∈T Π∀i∈aP (i ∈ t)
+
+ES(a)
+ES(a → c) = Σ∀t∈T,t.class=cΠ∀i∈aP (i ∈ t).
+Conf (a → c) = ES(a→c)
+
+ES(a)
+
+.
+
+(2)
+
+Some studies have criticized expected support and deﬁned another measure
+which is called probabilistic support [17] [18]. Probabilistic support is deﬁned as
+the probability of an itemset to be frequent with respect to a certain minimum
+expected support. However, probabilistic support increases the time complexity
+signiﬁcantly. Therefore to be more eﬃcient, UAC uses the expected support.
+uHARMONY deﬁnes another measure instead of conﬁdence which is called
+expected conﬁdence. The computation of this measure takes O(|T|2) time where
+|T| is the number of instances. Computing conﬁdence is only O(1), thus we use
+conﬁdence for eﬃciency reasons. Our experimental results in Section 4 empiri-
+cally shows that our conﬁdence based method can reach high accuracies.
+Our rule extraction method is based on UApriori [4]. The candidate set is
+ﬁrst initialized by all rules of form a → c where a is a single attribute assignment
+and c is a class label. After removing all infrequent ruleitems, the set of can-
+didates is pruned by the pessimistic error rate method [19]. Each two frequent
+ruleitems with the same class label are then joined together to form the next
+level candidate set. The procedure is repeated until the generated candidate set
+is empty, meaning all the frequent ruleitems have been found. Those ruleitems
+that are strong (their conﬁdence is above the predeﬁned threshold) are the po-
+tential classiﬁcation rules. In the next section, the potential ruleitems are ﬁltered
+and the ﬁnal set of rules is formed.
+
+3.2 Rule Filtering
+
+The outcome of the rule extraction is a set of rules called rawSet. Usually the
+number of ruleitems in rawSet is excessive. Excessive rules may have negative
+impact on the accuracy of the classiﬁcation model. To prevent this, UAC uses
+the database coverage method to reduce the set of rules while handling the
+uncertainty. The initial step of the database coverage method in UAC is to sort
+rules based on their absolute precedence to accelerate the algorithm. Absolute
+precedence in the context of uncertain data is deﬁned as follows:
+Deﬁnition: Rule ri has absolute precedence over rule rj or ri (cid:31) rj, if a) ri
+has higher conﬁdence than rj; b) ri and rj have the same conﬁdence but ri has
+higher expected support than rj; c) ri and rj have the same conﬁdence and the
+same expected support but ri have less items in its antecedent than rj.
+
+When data is not certain, conﬁdence is a good and suﬃcient measure to
+examine whether a rule is the best classiﬁer for an instance. But when uncertainty
+is present, there is an additional parameter in eﬀect. To illustrate this issue,
+assume rules r1 : [m, t → c1] and r2 : [n → c2] having conﬁdences of 0.8 and 0.7,
+respectively. It is evident that r1 (cid:31) r2. However, for a test instance like I1 : [(m :
+0.4), (n : 0.6), (t, 0.3) → x] where x is to be predicted, which rule should be used?
+According to CBA, r1 should be used because its conﬁdence is higher than that
+of r2. However, the probability that I1 satisﬁes the antecedent of r1 is small,
+so r1 is not likely to be the right classiﬁer. We solve this problem by including
+another measure called PI. P I or probability of inclusion, denoted by π(ri, Ik),
+is described as the probability by which rule ri can classify instance Ik. P I is
+
+deﬁned in Equation 3. In the example above π(r1, I1) is only 0.3 × 0.4 = 0.12,
+While π(r2, I1) is 0.6.
+
+π(ri, Ik) = Πw∈ri P (w ∈ Ik).
+
+(3)
+
+Next, we deﬁne applicability, denoted by α(ri, Ik) in Equation 4. Applicability
+is the probability by which rule ri correctly classiﬁes instance Ik and is used as
+one of the main metrics in UAC. For the previous example, α(r1, I1) = 0.096
+and α(r2, I1) = 0.42. Thus, it is more probable that I1 is correctly classiﬁed by
+r2 than r1.
+
+α(ri, Ik) = ri.Conf × π(ri, Ik).
+
+(4)
+
+Now based on the applicability, we deﬁne the concept of relative precedence
+of rule ri over rule rj with respect to Ik. This is denoted by ri (cid:31)[Ik] rj and is
+deﬁned as follows:
+Deﬁnition: Rule ri has relative precedence over rule rj with respect to
+instance Ik denoted by ri (cid:31)[Ik] rj, if: a) α(ri, Ik) > α(rj, Ik) b) ri and rj have
+the same applicability with respect to Ik but ri has absolute precedence over rj.
+Having ri (cid:31)[Ik] rj implies that ri is “more reliable” than rj in classifying
+Ik. It is evident from the deﬁnition, that the concept of “more reliable” rule in
+an uncertain data classiﬁer is relative. One rule can be more reliable than the
+other when dealing with an instance, and the opposite may be true for another
+instance. In the previous example, r2 has relative precedence over r1, even though
+r1 has absolute precedence over r2.
+
+UAC uses the relative precedence as well as the absolute precedence to ﬁlter
+rawSet. The database coverage algorithm of UAC has 3 stages that are explained
+below.
+
+Stage 1: Finding ucRules and uwRules After sorting rawSet based on the
+absolute precedence, we make one pass over the dataset to link each instance i in
+the dataset to two rules in rawSet: ucRule and uwRule. ucRule is the rule with
+the highest relative precedence that correctly classiﬁes i. In contrast, uwRule
+is the rule with the highest relative precedence that wrongly classiﬁes i. The
+pseudocode for the ﬁrst stage is presented in Algorithm 1.
+
+In Algorithm 1, three sets are declared. U contains all the rules that clas-
+sify at least one training instance correctly. Q is the set of all ucRules which
+have relative precedence over their corresponding uwRules with respect to the
+associated instances. If i.uwRule has relative and absolute precedence over the
+corresponding ucRule, a record of form < i.id, i.class, ucRule, uwRule > is put
+in A. Here, i.id is the unique identiﬁer of the instance and i.class represents the
+class label.
+
+To ﬁnd the corresponding ucRule and uwRule for each instance, the proce-
+dure starts at the ﬁrst rule of the sorted rawSet and descends. For example, if
+there is a rule that correctly classiﬁes the target instance and has applicability
+of α, we pass this rule and look for the rules with higher applicabilities to assign
+as ucRule. Searching continues only until we reach a rule that has a conﬁdence
+
+of less than α. Clearly, this rule and rules after it (with less conﬁdence) have no
+chance of being ucRule. The same applies to uwRule. Also as shown in Algo-
+rithm 1 lines 4 and 6, the applicability values of ucRule and uwRule are stored
+to expedite the process for the next stages.
+
+The purpose of the database coverage in UAC is to ﬁnd the best classifying
+rule (coverage) for each instance in the dataset. The covering rules are then
+contained in the ﬁnal set of rules and others are ﬁltered out. The best rule,
+that is the covering rule, in CBA is the highest precedence rule that classiﬁes an
+instance. This deﬁnition is not suﬃcient for UAC because the highest precedence
+rule may have a small P I.
+
+To solve the aforementioned problem, uHARMONY sets a predeﬁned lower
+bound on the P I value of the covering rule, a method with various disadvantages.
+Clearly, not only estimating the suitable lower bound is critical, but it is also
+intricate, and even in many cases impossible. When predicting a label for an
+instance, rules that have higher P I than the lower bound are treated alike. To
+improve upon this, it is necessary to set the lower bound high enough to avoid low
+probability rules covering the instances. However, it remains that it is possible
+that the only classifying rules for some of the instances are not above that lower
+bound and are removed. Additionally, setting a predeﬁned lower bound ﬁlters
+out usable information, while the purpose of the uncertain data classiﬁers is to
+use all of the available information. Moreover, having a single bound for all of
+the cases is not desirable. Diﬀerent instances may need diﬀerent lower bounds.
+Given all the above reasons, we need to evaluate the suitable lower bound
+for each instance. The deﬁnition of the covering rule in UAC is as follows, where
+we use the applicability of i.ucRule as our lower bound for covering i.
+correctly; b) π(r, i) > 0; c) α(r, i) > α(i.ucRule, i) = cApplic. d) r (cid:31) i.ucRule
+
+Deﬁnition: Rule r covers instance i if: a) r classiﬁes at least one instance
+
+cApplic represents the maximum rule applicability to classify an instance
+correctly. Thus, it is the suitable lower bound for the applicability of the covering
+rules. This will ensure that each instance is covered with the best classifying rule
+(ucRule) or a rule with higher relative and absolute precedence than ucRule. In
+the next two stages, we remove the rules that do not cover any instance from
+rawSet.
+
+Stage 2: Managing Replacements In this stage (Algorithm 2), cases that
+were stored in A at Stage 1 are managed. A contains all cases where i.uwRule
+has relative and absolute precedence over i.ucRule, thus i.ucRule may not cover
+i. If i.uwRule is ﬂagged in Stage 1, i is covered by i.uwRule (lines 3, 4, and 5).
+Otherwise based on the deﬁnition of the covering rule in Stage 1, i may get the
+coverage by the other rules such as w which have the following characteristics:
+a) w classiﬁes i incorrectly; b) w has relative precedence over i.ucRule with
+respect to i; c) w has absolute precedence over i.ucRule.
+
+Function allCoverRules (line 7) ﬁnds all such rules as w within U , which
+are called the replacements of i.ucRule. The replacement relation is stored in a
+DAG (directed acyclic graph) called RepDAG. In RepDAG, each parent node
+
+i.ucRule = f irstCorrect(i)
+i.cApplic = α(i.ucRule, i)
+i.uwRule = f irstW rong(i)
+i.wApplic = α(i.uwRule, i)
+U.add(ucRule)
+ucRule.covered[i.class] + +
+if (ucRule (cid:31)[i] uwRule) and ucRule (cid:31) uwRule then
+
+Algorithm 1 UAC Rule Filtering: Stage 1
+1: Q = ∅; U = ∅; A = ∅
+2: for all i ∈ Dataset do
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15: end for
+
+A.add(< i.id, i.class, ucRule, uwRule >)
+
+Q.add(ucRule)
+f lag(ucRule)
+
+else
+
+end if
+
+has a pointer to each child node via the replace set (line 12). The number of
+incoming edges is stored in incom (line 14). Each node represents a rule and
+each edge represents a replacement relation.
+
+Each rule has a covered array in UAC where r.covered[c] is used to store the
+
+total number of instances covered by r and labeled by class c. If r.covered[r.class] =
+0, then r does not classify any training instance correctly and is ﬁltered out.
+Starting from line 22, we traverse RepDAG in its topologically sorted order to
+update the covered array of each rule. Rule ri comes before rj in the sorted
+order, if ri (cid:31) rj and there is no instance such as Ik where rj (cid:31)[Ik] ri. If a rule
+fails to cover any instance correctly (line 26), it does not have any eﬀect on the
+covered array of the rules in its replace set. At the end of this Stage, enough
+information has been gathered to start the next stage, which ﬁnalizes the set of
+rules.
+
+Stage 3: Finalizing Rules At stage 3 (Algorithm 3), the set of rules is ﬁnalized.
+In this Stage, UAC ﬁlters the rules based on a greedy method of error reduction.
+Function computeError counts the number of instances that are covered by rule
+r but have a diﬀerent class label than r.class. The covered instances are then
+removed from the dataset. Function addDef aultClass ﬁnds the most frequent
+class label among the remaining instances (line 6). In line 8, the number of
+instances correctly classiﬁed by the default class is calculated. totalError is the
+total errors made by the current rule r and the default class. In fact, each rule
+with positive coverage over its class, is associated with a particular totalError,
+def Class, and def Acc (line 10). After processing the rules, we break the set of
+rules from the minimum error and assign def ault and def Applic. def Applic is
+used in rule selection as an estimate of applicability of the default class.
+Our rule ﬁltering algorithm has a runtime of O(|T| × |R|) in the worst case
+scenario, where |T| is the number of instances in the dataset and |R| is the size
+
+else
+
+RepDAG.add(ucRule)
+
+end if
+for all w ∈ wSet do
+
+RepDAG.add(w)
+
+end if
+end for
+Q = Q.add(wSet)
+
+wSet = allCoverRules(U, i.id, ucRule)
+if !RepDAG.contains(ucRule) then
+
+if f lagged(uwRule) then
+ucRule.covered[y] − −
+uwRule.covered[y] + +
+
+w.replace.add(< ucRule, i.id, y >)
+w.covered + +
+ucRule.incom + +
+if !w ∈ RepDAG then
+
+Algorithm 2 UAC Rule Filtering: Stage 2
+1: RepDAG = ∅
+2: for all < i.id, y, ucRule, uwRule >∈ A do
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+17:
+18:
+19:
+20:
+end if
+21: end for
+22: S ← set of all nodes with no incoming edges
+23: while S (cid:54)= ∅ do
+24:
+25:
+26:
+27:
+28:
+29:
+30:
+31:
+32:
+33:
+34:
+35:
+36:
+end if
+37:
+38:
+end for
+39: end while
+
+end if
+ucRule.incom − −
+if ucRule.incom = 0 then
+
+else
+
+if id is covered then
+
+r.covered[y] − −
+ucRule.covered[y] − −
+Mark id as covered.
+
+r = S.next() {next removes a rule from the set}
+for all < ucRule, id, y >∈ r.replace do
+
+if (r.covered[r.class] > 0) then
+
+end if
+
+S.add(ucRule)
+
+of rawSet. The worst case scenario is when at Stage 1, at least one ucRule or
+uwRule is the last rule in the sorted rawSet. This case rarely happens because
+the rules are sorted based on their absolute precedence. UAC also makes slightly
+more than one pass over the dataset in the rule ﬁltering step. Passes are made in
+Stage 1 and 2. Note that array A is usually small, given that most of the instances
+are usually classiﬁed by the highest ranked rules. The number of passes is an
+
+important point, because the dataset may be very large. Specially for datasets
+that can not be loaded into memory at once, it is not eﬃcient to make multiple
+pases. This is an advantage for UAC over UCBA, which passes over the dataset
+once for each rule in rawSet. Next section explains the rule selection that is the
+procedure of classifying test instances based on the set of rules.
+
+f inalSet.add(r)
+ruleErrors+ = computeError(r)
+def Class = addDef aultClass()
+def Errors = computeDef Err(def Class)
+def Acc = addDef Acc(uncovered(D) − def Errors)
+totalError = def Errors + ruleErrors
+C.add(r, totalError, def Class, def Acc)
+
+Algorithm 3 UAC Rule Filtering: Stage 3
+1: C = ∅
+2: for all r ∈ Q do
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+end if
+11:
+12: end for
+13: Break C from the rule with minimum error
+14: C contains the ﬁnal set of rules
+15: def ault = def Class.get(C.size)
+16: def Applic = def Acc.get(C.size)
+
+if r.covered[r.class] > 0 then
+
+|T|
+
+3.3 Rule Selection
+
+Rule selection is the procedure of classifying a test instance. In the previous
+sections, excessive rules were ﬁltered out from rawSet. The remaining set of rules
+is called ﬁnalSet and classiﬁes the test instances. UAC selects one classifying rule
+for each instance. The selected classifying rule has the highest relative precedence
+with respect to the test instance.
+
+The role of the default class (def ault in Algorithm 3 line 15) is to reduce the
+number of rules. The default class predicts the labels of those instances that are
+not classiﬁed by the rules in the ﬁnalSet. So the best predicting label for some of
+the test instances may be default class. But UAC may prefer rules with small P I
+values to the default class if we follow the procedure of “certain” data classiﬁers.
+To prevent this, def Applic is used as an estimate for applicability of the default
+rule. This value shows the number of training instances that were expected to
+be classiﬁed by the default rule. For example, when two classes, such as a and b,
+have the same population in the dataset but no rule labeled b exists, default rule
+has a very important role. Consequently, the value of the default applicability is
+high. As a result, if the highest precedence rule with respect to a test instance
+has less applicability than the default rule, the default rule will predict the label
+for that.
+
+4 Experiments and Results
+
+We use an empirical study to compare UAC against the existing rule based meth-
+ods. In all of the reported experiments on UAC, the minimum support is set to
+1%, the minimum conﬁdence to 0.5 and the maximum number of mined associ-
+ation rules to 80, 000. Each reported number is an average over 10 repetitions of
+10-fold cross validations.
+
+Since there is no public repository of uncertain datasets, we synthetically
+added uncertainty to 28 well known UCI datasets. This method was employed
+by all the studies in the ﬁeld including uHARMONY, DTU and uRule, uncertain
+svm, UCBA, etc. and gives a close estimation of the classiﬁer performance in the
+real world problems. We selected the same datasets as in [12] to compare our
+method with the results reported in their paper for uHARMONY, uRule and
+DTU. This also ensures that we did not choose only the datasets on which our
+method performs better.
+
+To compare our method against other classiﬁers, we employ averaging tech-
+nique and case by case comparison [20]. The same method was employed by
+many other studies including CBA, uHARMONY, DTU and uRule to prove the
+better performance of their algorithms. Table 1 provides a comparison between
+UAC and other existing rule based methods in terms of accuracy. The reported
+accuracies for uHARMONY (#3), DTU (#4) and uRule (#5) are reproduced
+from [12]. We applied UAC (#2) to the same datasets generated by the same
+procedure of adding uncertainty as [12] to make the comparison meaningful.
+Value N/A, existing in the experiments reported by [12], shows that the classi-
+ﬁer has run out of resources in their experiments. In Table 1, uncertainty level
+is U10@4 meaning that datasets have 10 percent uncertainty, where only four of
+the attributes with the highest information gain are uncertain. To add a level 10
+uncertainty to an attribute, it is attached with a 0.9 probability and the remain-
+ing 0.1 is distributed randomly among the other values present in the domain.
+The accuracies in this table are reported on already discretized versions of the
+dataset that are available online and referenced in [12].
+
+The accuracies reported show that in most cases UAC has reached higher
+accuracies. For some datasets the improvement is signiﬁcantly high, such as
+wine dataset with 36.79% and bands dataset with 19.77% improvement over the
+existing maximum accuracy. UAC reaches higher accuracies on the average too.
+We have conducted further extensive experiments comparing UAC and UCBA
+since both stem from CBA. Due to lack of space we report here only the summary
+and refer the reader to [21] for further details. Using a new and more general
+uncertainty model that we propose [21], we compared the accuracy of UAC and
+UCBA on all 28 datasets as in the previous experiments in Table 1 and show
+that UAC outperforms UCBA. On average, over the 28 datasets, the accuracy of
+UAC was 74.7% while UCBA averaged 67.5% if a sampled-based model is used
+when a numerical attribute is assigned a set of possible values; and respectively
+70.3% versus 66.7% if an interval-based model is used [21]. In short, for a nu-
+merical attribute, the sampled-based model considers the attribute value to be
+expressed by a set of values with their respective probabilities, while the interval-
+
+#1 Dataset #2 UAC #3 uHAR #4 DTU #5 uRule
+
+car
+
+contracep
+
+australian
+
+credit
+echo
+ﬂag
+
+balance
+bands
+breast
+
+80.2
+84.9
+78.4
+94.3
+89.3
+43.6
+78.1
+92
+45.7
+71.9
+77.3
+81.5
+72.4
+monks-1
+99
+75.5
+monks-2
+monks-3
+98.1
+mushroom 100
+73.8
+
+german
+heart
+
+hepatitis
+
+horse
+
+pima
+
+post oper
+promoters
+
+spect
+
+survival
+ta eval
+
+tic-tac-toe
+
+vehicle
+voting
+wine
+zoo
+
+Average
+
+58
+66
+
+81.8
+74
+50.4
+90.8
+69.8
+91.1
+87.9
+92.3
+
+78.5
+
+85.37
+89.3
+58.63
+65.52
+77.72
+47.59
+85.95
+93.29
+52.42
+69.6
+56.64
+82.52
+82.88
+91.36
+65.72
+96.4
+97.45
+65.11
+69.75
+
+69
+
+80.19
+73.53
+45.04
+76.2
+63.44
+92.86
+51.11
+88.76
+
+74.05
+
+83.62
+56.32
+N/A
+91.27
+70.02
+50.1
+84.35
+92.37
+59.28
+72.3
+53.04
+
+80
+
+85.33
+74.64
+65.72
+79.96
+100
+65.1
+70
+71.7
+79.03
+73.53
+48.34
+72.65
+64.78
+94.48
+42.13
+92.08
+
+84.35
+62.88
+N/A
+94.56
+70.02
+44.26
+74.35
+87.02
+44.85
+70.1
+52.39
+79.35
+N/A
+70.68
+65.72
+68.05
+99.98
+67.32
+
+70
+
+61.32
+81.65
+72.55
+33.77
+81.52
+N/A
+94.94
+41.57
+89.11
+
+73.04
+
+70.49
+
+Table 1. %Accuracy, reported by rule based classiﬁers on datasets modeled based on
+[12] at level of uncertainty of U4@10.
+
+based model considers the attribute value to be an interval with a probability
+distribution function. Moreover, comparing the training time, UAC was in many
+cases about 2 orders of magnitude faster (i.e. X100) than UCBA and produced
+signiﬁcantly less rules for all tested uncertainty levels. This demonstrates the
+eﬃcacy of the rule pruning startegy managing to preserve a better set of rules
+than UCBA.
+
+5 Conclusion
+
+In this paper we propose an eﬀective way to prune associative classiﬁcation rules
+in the presence of uncertainty and present a complete associative classiﬁer for
+uncertain data that encompasses this pruning. Empirical results show that our
+algorithm outperforms 4 existing rule-based methods in terms of accuracy on
+average for 28 datasets and also show that UAC outperforms UCBA signiﬁ-
+cantly for these 28 datasets in terms of accuracy even though UAC produces
+less classiﬁcation rules and has a smaller runtime than UCBA.
+
+References
+
+1. P. Sen and A. Deshpande, “Representing and querying correlated tuples in prob-
+
+abilistic databases,” in IEEE ICDE, pp. 596–605, 2007.
+
+2. C. Wang, L.-Y. Yuan, J. H. You, O. R. Zaiane, and J. Pei, “On pruning for top-k
+ranking in uncertain databases,” in international conference on Very Large Data
+Bases (VLDB), PVLDB Vol.4, N.10, 2011.
+
+3. M. A. Cheema, X. Lin, W. Wang, W. Zhang, and J. Pei, “Probabilistic reverse
+nearest neighbor queries on uncertain data,” IEEE Transactions on Knowledge
+and Data Engeneering (TKDE), vol. 22, pp. 550–564, April 2010.
+
+4. C. C. Aggarwal, Y. Li, J. Wang, and J. Wang, “Frequent pattern mining with
+
+uncertain data,” in ACM SIGKDD, pp. 29–38, 2009.
+
+5. B. Jiang and J. Pei, “Outlier detection on uncertain data: Objects, instances, and
+
+inference,” in IEEE ICDE, 2011.
+
+6. M.-L. Antonie, O. R. Zaiane, R. Holte, “Learning to use a learned model: A two-
+
+stage approach to classiﬁcation,” in IEEE ICDM, pp. 33–42, 2006.
+
+7. J. Bi and T. Zhang, “Support vector classiﬁcation with input data uncertainty,” in
+
+Advances in Neural Information Processing Systems (NIPS), pp. 161–168, 2004.
+
+8. B. Qin, Y. Xia, and F. Li, “DTU: A decision tree for uncertain data,” in PAKDD,
+
+pp. 4–15, 2009.
+
+9. J. Ge, Y. Xia, and C. Nadungodage, “UNN: A neural network for uncertain data
+
+classiﬁcation,” in PAKDD, pp. 449–460, 2010.
+
+10. B. Qin, Y. Xia, and F. Li, “A bayesian classiﬁer for uncertain data,” in ACM
+
+Symposium on Applied Computing, pp. 1010–1014, 2010.
+
+11. B. Qin, Y. Xia, S. Prabhakar, and Y. Tu, “A rule-based classiﬁcation algorithm
+
+for uncertain data,” in IEEE ICDE, 2009.
+
+12. C. Gao and J. Wang, “Direct mining of discriminative patterns for classifying
+
+uncertain data,” in ACM SIGKDD, pp. 861–870, 2010.
+
+13. X.Qin, Y. Zhang, X. Li, and Y. Wang, “Associative classiﬁer for uncertain data,”
+in international conference on Web-age information management (WAIM), pp.
+692–703, 2010.
+
+14. B. Liu, W. Hsu, and Y. Ma, “Integrating Classiﬁcation and Association Rule
+
+Mining,” in ACM SIGKDD, pp. 80–86, 1998.
+
+15. O. Zaiane and M.-L. Antonie, “Classifying text documents by associating terms
+with text categories,” Australasian database conference, pp. 215–222, January 2002.
+16. W. Li, J. Han, and J. Pei, “CMAR: Accurate and eﬃcient classiﬁcation based on
+
+multiple class-association rules,” in IEEE ICDM, pp. 369–376, 2001.
+
+17. Q. Zhang, F. Li, and K. Yi, “Finding frequent items in probabilistic data,” in ACM
+
+SIGMOD, pp. 819–832, 2008.
+
+18. T. Bernecker, H. p. Kriegel, M. Renz, F. Verhein, and A. Zueﬂe, “Probabilistic
+
+frequent itemset mining in uncertain databases,” in ACM SIGKDD, 2009.
+
+19. J. R. Quinlan, C4.5: programs for machine learning, Morgan Kaufmann Publishers,
+
+1993.
+
+20. J. Demsar, “Statistical comparison of classiﬁers over multiple data sets”, JMLR,
+
+vol. 7, pp. 1–30, 2010.
+
+21. M. Hooshsadat, Classiﬁcation and Sequential Pattern Mining From Uncertain
+Datasets, MSc dissertation, University of Alberta, Edmonton, Alberta, Septem-
+ber, 2011.
+
+

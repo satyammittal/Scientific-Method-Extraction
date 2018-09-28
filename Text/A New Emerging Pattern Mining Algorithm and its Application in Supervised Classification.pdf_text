@@ -1,0 +1,678 @@
+A New Emerging Pattern Mining Algorithm and
+
+Its Application in Supervised Classiﬁcation
+
+Milton Garc´ıa-Borroto1,2, Jos´e Francisco Mart´ınez-Trinidad2,
+
+and Jes´us Ariel Carrasco-Ochoa2
+
+1 Centro de Bioplantas. Carretera a Moron km 9, Ciego de Avila, Cuba
+
+mil@bioplantas.cu
+
+2 Instituto Nacional de Astrof´ısica, ´Optica y Electr´onica. Luis Enrique Erro No. 1,
+
+Sta. Mar´ıa Tonanzintla, Puebla, M´exico, C.P. 72840
+
+{ariel,fmartine}@ccc.inaoep.mx
+
+Abstract. Obtaining an accurate class prediction of a query object is an
+important component of supervised classiﬁcation. However, it could be
+important to understand the classiﬁcation in terms of the application do-
+main, mostly if the prediction disagrees with the expected results. Many
+accurate classiﬁers are unable to explain their classiﬁcation results in
+terms understandable by an application expert. Emerging Pattern clas-
+siﬁers, on the other hand, are accurate and easy to understand. However,
+they have two characteristics that could degrade their accuracy: global
+discretization of numerical attributes and high sensitivity to the support
+threshold value. In this paper, we introduce a novel algorithm to ﬁnd
+emerging patterns without global discretization, which uses an accurate
+estimation of the support threshold. Experimental results show that our
+classiﬁer attains higher accuracy than other understandable classiﬁers,
+while being competitive with Nearest Neighbors and Support Vector Ma-
+chines classiﬁers.
+
+Keywords: Emerging pattern mining, Understandable classiﬁers,
+Emerging pattern classiﬁers.
+
+1 Introduction
+
+The main goal of a supervised classiﬁcation algorithm is to build a model based
+on a representative sample of the problem classes [1]. This model can be used to
+predict the class of new objects or to gain understanding of the problem domain.
+In many cases, the result of the classiﬁcation is not enough; the user could need
+to understand the classiﬁcation model and the classiﬁcation results, mostly if
+the classiﬁcation disagrees with the expected results.
+
+Many accurate classiﬁers, like Neural Networks [2] or Support Vector Ma-
+chines [3], are unable to explain their classiﬁcation results in terms understand-
+able by an application expert. Emerging Pattern classiﬁers, on the other hand,
+build accurate and easy to understand models. An emerging pattern is a com-
+bination of feature values that appears mostly in a single class. This way, an
+
+M.J. Zaki et al. (Eds.): PAKDD 2010, Part I, LNAI 6118, pp. 150–157, 2010.
+c(cid:2) Springer-Verlag Berlin Heidelberg 2010
+
+A New Emerging Pattern Mining Algorithm and Its Application
+
+151
+
+emerging pattern can capture useful contrasts among the problem classes [4],
+which can be used to predict the class of unseen objects.
+
+Emerging pattern classiﬁers are very valuable tools to solve real problems in
+ﬁelds like Bioinformatics [5], streaming data analysis [6], and intruder detec-
+tion [7].
+
+Current methods for ﬁnding Emerging Patterns in a database have two main
+
+drawbacks:
+– Global discretization of numerical attributes, which could seriously degrade
+
+– High sensitivity to the support threshold value, which makes very hard for
+
+the classiﬁcation accuracy
+
+the user to select a good value
+
+In this paper, we introduce the Crisp Emerging Pattern Mining (CEPM), a novel
+algorithm to ﬁnd emerging patterns, which does not apply global discretiza-
+tion of numerical attributes. CEPM extracts patterns using a special procedure,
+from a collection of C4.5 decision trees. To ﬁnd a representative collection of
+patterns, our algorithm uses a novel object weighting scheme. CEPM applies
+local discretization, using only such attribute values appearing in the objects on
+each tree node. Additionally, CEPM ﬁnds an accurate estimation of the min-
+imal support threshold, testing diﬀerent values decrementally. It starts from a
+high enough value and ends when the threshold attains the expected abstention
+ratio. CEPM returns a set of emerging patterns with the highest support value
+associated with the lowest expected abstention ratio.
+
+The rest of the paper is organized as follows: Section 2 presents a brief revi-
+sion about classiﬁcation using emerging patterns, Section 3 introduces the new
+algorithm for mining emerging patterns without global discretization, Section
+4 presents the algorithm to estimate the minimal support threshold, Section 5
+shows the experimental results, and Section 6 presents our conclusions.
+
+2 Classiﬁcation Using Emerging Patterns
+
+A pattern is an expression, deﬁned in a language, which describes a collection
+of objects; the amount of objects described by a pattern is the pattern support.
+In a supervised classiﬁcation problem, we say that a pattern is emerging if its
+support increases signiﬁcantly from one class to the others [4]. Emerging patterns
+(EPs) are usually expressed as combinations of feature values, like (Color =
+green, Sex = male, Age = 23) or as logical properties, like [Color = green] ∧
+[Sex = male] ∧ [Age > 23].
+
+Most algorithms for emerging pattern mining have the goal of ﬁnding the
+patterns that satisfy a desired property: being supported by a single class, min-
+imality over subset inclusion, or tolerance to noisy objects. These algorithms
+have the following general steps:
+
+1. Selection of the minimal support threshold μ
+2. Global discretization of numerical attributes
+
+152
+
+M. Garc´ıa-Borroto, J.F. Mart´ınez-Trinidad, and J.A. Carrasco-Ochoa
+
+3. Representation of the transformed objects using a particular structure
+4. Traversing the structure to ﬁnd emerging patterns
+5. Pattern ﬁltering
+
+Using this traditional algorithm has two important drawbacks:
+
+1. Global discretization of numerical attributes could drastically degrade the
+classiﬁer accuracy, since an emerging pattern relates a combination of feature
+values with a class. Therefore, discretizing a numerical attribute without
+considering the values of other features could hide important relations.
+In Table 1, we can see that SJEP [8], one of the most accurate emerging
+pattern classiﬁers, obtains very poor accuracies in databases like Iris, while
+all other classiﬁers attain accuracies above 93%. In some other databases,
+SJEP is unable to extract even a single pattern, because most numerical fea-
+tures are discretized into a single categorical value. This behavior is mainly
+due to using the Entropy discretization method [9], but other discretization
+methods obtain similar results, maybe in diﬀerent databases.
+
+2. High sensitivity to the support threshold value. The accuracy of the classiﬁer
+could have a serious degradation on small variations of the minimal support
+value. For example, in chess and census databases, the accuracy drops 3%
+with a variation of 2 in the threshold value [10].
+
+3 Crisp Emerging Pattern Mining (CEPM)
+
+In this section, we introduce CEPM, a new emerging pattern mining algorithm
+with local discretization of numerical features. CEPM extracts patterns from
+a collection of C4.5 decision trees [11], using a special pattern mining proce-
+dure during the tree induction. To guarantee that CEPM ﬁnds a representative
+collection of patterns, it uses a novel object weighting scheme.
+
+The tree induction procedure has the following characteristics:
+– Candidate splits are binary. Nominal attributes use properties like [F eature
+= a] and [F eature (cid:3)= a] for each one of their values; numerical attributes use
+properties like [F eature > n] and [F eature ≤ n] for all candidate cut points
+– If a node has less than μ objects, it is not further split because it cannot
+
+generate emerging patterns
+
+– To select the best split, our algorithm evaluates the weighted information
+gain. The weighted information gain is similar to the classical information
+gain but there is a weight associated to each object. This way, PClass and
+Pchild are calculated using (1). Note that objects with weight close to 0 have
+low inﬂuence in the determination of the best split.
+(cid:2)
+
+(cid:2)
+
+PClass =
+
+o∈Class wo
+(cid:2)
+
+wo
+
+, Pchild =
+
+o∈child wo
+(cid:2)
+
+wo
+
+.
+
+(1)
+
+A New Emerging Pattern Mining Algorithm and Its Application
+
+153
+
+Fig. 1. Example of an emerging pattern appearing in a non-optimal candidate split
+
+During the tree induction, every tree node that (A) has at least μ objects in a
+class, and (B) has at most one object in the complement of that class, generates a
+new emerging pattern. Each pattern consists in the conjunction of the properties
+from the node to the root.
+
+Additionally, CEPM extracts patterns while evaluating the splits, even if a
+split does not have the highest gain; any tree node that fulﬁlls (A) and (B)
+generates an emerging pattern. For example, Fig. 1 shows two candidate splits,
+using diﬀerent properties. Although the ﬁrst one has the highest information
+gain, the second contains the emerging pattern (Age < 20). So, this pattern is
+extracted although the split is discarded.
+
+CEPM iteratively induces several decision trees, updating the object weights
+
+after each induction. The algorithm updates the weights using (2).
+
+(cid:3)
+5 ·
+
+arccot
+
+Supporto
+
+averageSupport
+
+π
+
+(cid:4)
+
+.
+
+wo =
+
+(2)
+
+where
+– Supporto is the sum of the support of such patterns contained in o. If a
+pattern belongs to a diﬀerent class than o, its support is multiplied by −1
+– averageSupport is the average support of the patterns in the database, which
+
+is estimated based on the patterns found in the ﬁrst built tree.
+
+We can describe CEPM using the following pseudocode:
+
+1. Initialize object weights to 1
+2. Induce the ﬁrst decision tree with the initial weights and extract the ﬁrst
+
+emerging patterns
+
+3. Calculate the average support, used in weight recalculation
+4. Repeat while a new pattern is added in the last iteration
+
+(a) Recalculate object weights
+(b) Induce the new decision tree with current weights and extract the emerg-
+
+ing patterns
+
+(c) Add the new patterns to the pattern collection
+
+5. Return mined patterns
+
+It is worth to mention that CEPM returns a set of the most general emerging
+patterns with support greater or equal to μ. A pattern P is more general than
+
+154
+
+M. Garc´ıa-Borroto, J.F. Mart´ınez-Trinidad, and J.A. Carrasco-Ochoa
+
+a pattern Q if the set of objects described by Q is strictly contained in those
+described by P , considering all the objects in the universe. Additionally, CEPM
+returns the abstention ratio, which is the ratio of objects that are not covered
+by the resultant patterns.
+
+The CEPM based classiﬁer, named CEPMC, uses the following decision rule:
+to assign an object to the class with maximum value of the total votes given
+by the patterns contained in the object. Every pattern contained in the object
+votes for its own class with its total support. If no pattern supports the object
+or there is a tie in the votes, the classiﬁer refuses to classify the object.
+
+4 Estimating the Minimal Support Threshold for CEPM
+
+Selecting the minimal support threshold for an emerging pattern classiﬁer is a
+diﬃcult task; a classiﬁer using patterns with higher μ values, is a more accurate
+classiﬁer, but could reject to classify more objects. On the contrary, a classiﬁer
+using patterns with lower μ values might contain many useless patterns, which
+could degrade the classiﬁcation accuracy.
+
+The algorithm proposed for calculating the minimal support value infers
+the initial support (M axSupport) and the minimal expected abstention rate
+(M inAbstRate). Then, it tests support values, starting from μ = M axSupport,
+until a μ value produces an abstention rate lower than M inAbstRate. The value
+of μ is decremented using a calculated Step = M axSupport/10, because if
+M axSupport is high, decrementing μ by 1 could be too costly.
+
+Some important remarks:
+
+1. M axSupport is inferred based on two criteria. If it is higher than the op-
+timum, the algorithm makes unnecessary iterations; if it is lower, better
+models (with higher μ) are disregarded.
+
+2. M inAbstRate is inferred using μ = 2, so it measures the minimal expected
+abstention ratio of a pattern based classiﬁer using CEPM. The algorithm
+searches for more accurate classiﬁers (having patterns with higher μ values)
+with the same abstention level.
+
+5 Experimental Results
+
+To compare the performance of the CEPMC classiﬁer, we carried out some ex-
+periments over 22 databases from the UCI Repository of Machine Learning [12].
+We selected six state-of-the-art classiﬁers: Nearest Neighbors [13], Bagging and
+Boosting [14], Random Forest [15], C4.5 [11] and Support Vector Machines [3].
+For each classiﬁer, we used the Weka 3.6.1 implementation [16] with its default
+parameters. We also tested SJEP [8], which is one of the most accurate emerging
+pattern based classiﬁers, using the minimal support threshold suggested by their
+authors.
+
+We performed 10-fold cross validation, averaging the results. In both SJEP
+and CEPMC we reported abstentions as errors. In these objects, the classiﬁer
+
+A New Emerging Pattern Mining Algorithm and Its Application
+
+155
+
+Table 1. Accuracy results of the classiﬁers in the selected databases. The highest
+accuracy per database is bolded.
+
+DBName
+
+3NN AdaBoost Bagging C4.5 RandFor SVM SJEP CEPMC
+
+balance-scale 85.4
+breast-cancer 70.3
+96.7
+breast-w
+82.5
+cleveland
+70.6
+haberman
+71.4
+hayes-roth
+81.2
+heart-c
+83.6
+heart-h
+79.3
+heart-statlog
+82.0
+hepatitis
+96.0
+iris
+90.7
+labor
+liver-disorders 65.5
+85.9
+lymph
+50.0
+mp1
+51.4
+mp2
+50.0
+mp3
+60.0
+shuttle
+64.7
+spect
+98.5
+tic-tac-toe
+92.0
+vote
+96.1
+wine
+Average
+77.4
+
+71.7
+72.4
+94.9
+84.2
+70.9
+53.6
+83.2
+81.6
+80.7
+81.2
+96.7
+87.0
+66.1
+75.7
+50.0
+50.0
+50.0
+65.0
+66.8
+73.5
+94.7
+87.5
+74.4
+
+82.6
+71.0
+96.0
+79.9
+72.5
+75.0
+81.9
+79.9
+79.3
+82.0
+93.3
+84.0
+68.7
+77.7
+50.0
+55.1
+50.0
+60.0
+61.5
+91.0
+95.2
+94.3
+76.4
+
+77.6
+73.4
+94.9
+78.2
+68.0
+89.3
+76.2
+79.6
+79.3
+78.8
+94.0
+80.0
+68.7
+78.5
+50.0
+59.7
+50.0
+60.0
+66.8
+83.8
+96.1
+92.7
+76.2
+
+79.4
+65.8
+95.1
+78.6
+67.6
+85.7
+80.9
+79.3
+79.3
+81.3
+94.7
+86.7
+70.7
+79.9
+50.0
+58.6
+50.0
+55.0
+62.0
+91.9
+96.1
+97.2
+76.6
+
+87.5 16.0
+70.7 44.5
+96.7 96.1
+84.5 77.9
+72.5 0.0
+53.6
+0.0
+82.8 78.6
+82.6 46.3
+83.0 64.8
+86.5 77.5
+96.0 66.7
+90.7 82.0
+57.7
+0.0
+87.9 51.5
+50.0 57.9
+50.5 34.0
+50.0 63.7
+45.0
+0.0
+67.9
+0.0
+98.3 91.3
+95.9 91.1
+98.9 55.1
+76.8 49.8
+
+79.5
+72.0
+96.0
+81.2
+68.6
+78.6
+81.2
+81.0
+80.0
+82.5
+95.3
+89.0
+69.3
+83.7
+100.0
+83.8
+97.5
+50.0
+78.1
+96.5
+94.0
+93.3
+83.2
+
+is unable to assign a class; returning the majority or a random class could hide
+these undesirable cases. In Table 1, we can ﬁnd the accuracy results, in percent.
+Experimental results show that SJEP has low accuracy values in some da-
+tabases, compared to other classiﬁers. In those databases, most numerical at-
+tributes were discretized into a categorical attribute with a single value, so they
+were useless for mining patterns. CEPMC has higher accuracies than SJEP
+in most databases. It also has the highest average accuracy from all tested
+classiﬁers.
+
+In order to determine if the diﬀerences in accuracy are statistically signiﬁ-
+cant, we performed a pairwise comparison between our classiﬁer and the oth-
+ers. Each cell in Table 2 contains the number of databases where our classi-
+ﬁer Win/Lose/Tie to each other classiﬁer. We detect ties using a two-tailed
+T-Test [17] with signiﬁcance of 0.05. The pairwise comparison shows that, in the
+tested databases, CEPMC is more accurate than other understandable classiﬁers,
+while being competitive with Nearest Neighbors and Support Vector Machines
+classiﬁers.
+
+The model built by CEPMC is very easy to understand in terms of the problem
+domain, unlike Nearest Neighbors and Support Vector Machines models. Each
+
+156
+
+M. Garc´ıa-Borroto, J.F. Mart´ınez-Trinidad, and J.A. Carrasco-Ochoa
+
+Table 2. Pairwise comparison between our classiﬁer and the others. Each cell shows
+the number of Win/Loss/Tie of CEPMC with respect to the corresponding classiﬁer
+over the selected 22 databases.
+
+3NN
+CEPMC 6/5/11
+
+7NN
+6/6/10
+
+AdaBoost Bagging
+8/3/11
+
+10/3/9
+
+C4.5
+
+RandFor
+
+10/3/9
+
+9/4/9
+
+SVM SJEP
+21/0/1
+7/7/8
+
+Table 3. Classiﬁer model built by CEPMC for one of the folds in database Iris
+
+iris-setosa
+[P etalLength ≤ 1.90]
+[P etalW idth ≤ 0.60]
+iris-versicolor
+[P etalLength > 1.90] ∧ [P etalLength ≤ 4.90] ∧ [P etalW idth ≤ 1.60]
+iris-virginica
+[P etalLength > 1.90] ∧ [P etalW idth > 1.60]
+[P etalLength > 4.90]
+
+class is described as a collection of discriminative properties, as you can see in
+the example appearing in Table 3.
+
+6 Conclusions
+
+In this paper, we introduced CEPM, a new algorithm for mining Emerging Pat-
+terns. It uses local discretization of numerical values for solving the global dis-
+cretization drawback of previous emerging pattern classiﬁers. CEPM extracts
+patterns from a collection of decision trees, using a special extraction proce-
+dure during the tree induction. To obtain a collection of representative patterns,
+CEPM uses a novel object weighting scheme. Furthermore, this paper proposes
+an algorithm for accurately estimate the minimal support threshold.
+
+Experimental results show that CEPMC, a classiﬁer based on CEPM, is more
+accurate than one of the most accurate emerging pattern classiﬁers in the ma-
+jority of tested databases. A pairwise comparison reveals that CEPMC is more
+accurate than other understandable classiﬁers, and as accurate as Nearest Neigh-
+bors and Support Vector Machines, while the model built by CEPMC for clas-
+siﬁcation is easy to understand in terms of the problem domain.
+
+In the future, we will work on speeding up the algorithm to estimate the minimal
+
+support threshold, which is the slowest component of the current algorithm.
+
+Acknowledgments
+
+This work is partly supported by the National Council of Science and Technology
+of M´exico under the project CB-2008-01-106443 and grant 25275.
+
+A New Emerging Pattern Mining Algorithm and Its Application
+
+157
+
+References
+
+1. Berzal, F., Cubero, J.C., S´anchez, D., Serrano, J.M.: Art: A hybrid classiﬁcation
+
+model. Machine Learning 54, 67–92 (2004)
+
+2. Haykin, S.: Neural Networks: A Comprehensive Foundation. Prentice Hall PTR,
+
+Englewood Cliﬀs (1998)
+
+3. Cortes, C., Vapnik, V.: Support-vector networks. Machine Learning 20(3), 273–297
+
+(1995)
+
+4. Dong, G., Li, J.: Eﬃcient mining of emerging patterns: Discovering trends and
+diﬀerences. In: Proceedings of the Fifth ACM SIGKDD International Conference
+on Knowledge Discovery and Data Mining, San Diego, California, United States,
+pp. 43–52. ACM, New York (1999)
+
+5. Quackenbush, J.: Computational approaches to analysis of dna microarray data.
+
+Methods Inf. Med. 45(1), 91–103 (2006)
+
+6. Alhammady, H.: Mining streaming emerging patterns from streaming data. In:
+IEEE/ACS International Conference on Computer Systems and Applications, Am-
+man, pp. 432–436 (2007)
+
+7. Chen, L., Dong, G.: Masquerader detection using oclep: One-class classiﬁcation
+using length statistics of emerging patterns. In: WAIMW 2006: Proceedings of the
+Seventh International Conference on Web-Age Information Management Work-
+shops, Washington, DC, USA, vol. 5, IEEE Computer Society, Los Alamitos (2006)
+8. Fan, H., Ramamohanarao, K.: Fast discovery and the generalization of strong jump-
+ing emerging patterns for building compact and accurate classiﬁers. IEEE Trans.
+on Knowl. and Data Eng. 18(6), 721–737 (2006)
+
+9. Fayyad, U., Irani, K.: Multi-interval discretization of continuous-valued attributes
+for classiﬁcation learning. In: 13th Int’l Joint Conf. Artiﬁcial Intelligence (IJCAI),
+pp. 1022–1029 (1993)
+
+10. Bailey, J., Manoukian, T., Ramamohanarao, K.: Fast algorithms for mining emerg-
+ing patterns. In: Elomaa, T., Mannila, H., Toivonen, H. (eds.) PKDD 2002. LNCS
+(LNAI), vol. 2431, pp. 39–208. Springer, Heidelberg (2002)
+
+11. Quinlan, J.R.: C4.5: Programs for Machine Learning. Morgan Kaufmann Publish-
+
+ers Inc., San Francisco (1993)
+
+12. Merz, C., Murphy, P.: Uci repository of machine learning databases. Technical
+report, University of California at Irvine, Department of Information and Computer
+Science (1998)
+
+13. Dasarathy, B.D.: Nearest Neighbor (NN) Norms: NN Pattern Classiﬁcation Tech-
+
+niques. IEEE Computer Society Press, Los Alamitos (1991)
+
+14. Kuncheva, L.I.: Combining Pattern Classiﬁers. In: Methods and Algorithms. Wiley-
+
+Interscience, Hoboken (2004)
+
+15. Ho, T.K.: The random subspace method for constructing decision forests. IEEE
+Transactions on Pattern Analysis and Machine Intelligence 20(8), 832–844 (1998)
+16. Frank, E., Hall, M.A., Holmes, G., Kirkby, R., Pfahringer, B., Witten, I.H.: Weka:
+A machine learning workbench for data mining. In: Maimon, O., Rokach, L. (eds.)
+Data Mining and Knowledge Discovery Handbook: A Complete Guide for Practi-
+tioners and Researchers, pp. 1305–1314. Springer, Berlin (2005)
+
+17. Dietterich, T.G.: Approximate statistical tests for comparing supervised classiﬁca-
+
+tion learning algorithms. Neural Computation 10(7), 1895–1923 (1998)
+
+

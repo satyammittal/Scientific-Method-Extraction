@@ -1,0 +1,843 @@
+Eﬃciently Depth-First Minimal Pattern Mining
+
+Arnaud Soulet1 and Fran¸cois Rioult2
+
+1 Universit´e Fran¸cois Rabelais Tours, LI
+
+3 Place Jean Jaur`es,
+F-41029 Blois, France
+
+arnaud.soulet@univ-tours.fr
+2 Universit´e de Caen, GREYC
+
+Campus Cˆote de Nacre,
+
+F-14032 Caen C´edex, France
+francois.rioult@unicaen.fr
+
+Abstract. Condensed representations have been studied extensively for
+15 years. In particular, the maximal patterns of the equivalence classes
+have received much attention with very general proposals. In contrast,
+the minimal patterns remained in the shadows in particular because of
+their diﬃcult extraction. In this paper, we present a generic framework
+for minimal patterns mining by introducing the concept of minimizable
+set system. This framework addresses various languages such as itemsets
+or strings, and at the same time, diﬀerent metrics such as frequency. For
+instance, the free and the essential patterns are naturally handled by
+our approach, just as the minimal strings. Then, for any minimizable set
+system, we introduce a fast minimality check that is easy to incorporate
+in a depth-ﬁrst search algorithm for mining the minimal patterns. We
+demonstrate that it is polynomial-delay and polynomial-space. Experi-
+ments on traditional benchmarks complete our study.
+
+Keywords: Pattern mining, condensed representation, minimal pattern.
+
+1
+
+Introduction
+
+Minimality is an essential concept of pattern mining. Given a function f and
+a language L, a minimal pattern X is one of the smallest pattern with respect
+to the set inclusion in L satisfying the property f (X). Interestingly, the whole
+set of minimal patterns forms a condensed representation of L adequate to f : it
+is possible to retrieve f (Y ) for any pattern of Y in L. Typically, the set of free
+itemsets [1] (also called generators or key itemsets [2]) is a condensed representa-
+tion of all itemsets (here, f and L are respectively the frequency and the itemset
+language). Of course, it is often more eﬃcient to extract minimal patterns rather
+than all patterns because they are less numerous. In addition, minimal patterns
+have a lot of useful applications including higher KDD tasks: producing the
+most relevant association rules [3], building classiﬁers [4] or generating minimal
+traversals [5]. Minimality has been studied in the case of diﬀerent functions (like
+frequency [6] and condensable functions [7]) and diﬀerent languages (e.g., item-
+sets [1] and sequences [8]). Although the minimality has obvious advantages [9],
+
+V.S. Tseng et al. (Eds.): PAKDD 2014, Part I, LNAI 8443, pp. 28–39, 2014.
+c(cid:2) Springer International Publishing Switzerland 2014
+
+Eﬃciently Depth-First Minimal Pattern Mining
+
+29
+
+very few studies are related to the minimality while maximality (i.e., closed pat-
+terns) has been widely studied. In particular, to the best of our knowledge, there
+is no framework as general as those proposed for maximality [10].
+
+We think that a current major drawback of minimal patterns lies in their inef-
+ﬁcient extraction. This low eﬃciency comes mainly from the fact that most exist-
+ing algorithms use a levelwise approach [1,7,11] (i.e., breadth-ﬁrst search/generate
+and test method). As they store all candidates in memory during the generation
+phase, the extraction may fail due to memory lack. To tackle this memory pitfall, it
+seems preferable to adopt a depth-ﬁrst traversal which often consumes less mem-
+ory and is still very fast. However, check whether the minimality is satisﬁed or not
+is very diﬃcult in a depth-ﬁrst traversal. In the case of frequency with itemsets,
+the best way for evaluating the minimality for a pattern (saying abc) is to compare
+its frequency with that of all its direct subsets (here, ab, ac and bc). But, when the
+pattern abc is achieved by a depth-ﬁrst traversal, only frequencies of a and ab have
+previously been calculated. As the frequency of ac and bc are unknown, it is im-
+possible to check whether the frequency of abc is strictly less than that of ac and
+bc. To cope with this problem, [11,12] have adopted a diﬀerent traversal with re-
+ordered items. For instance, when the itemset abc is reached by this new traversal,
+c, b, bc, a, ac and bc were previously scanned and their frequency are known for
+checking whether abc is minimal. Unfortunately, such a method requires to store
+all the patterns in memory (here, c, b, bc and so on) using a trie [11] or an hash
+table [12]. For this reason, existing DFS proposals [11,12] do not solve the low
+memory consumption issue as expected.
+
+Contributions. The main goal of this paper is to present a generic and eﬃcient
+framework for minimal pattern mining by providing a depth-ﬁrst search algo-
+rithm. We introduce the notion of minimizable set system which is at the core of
+the deﬁnition of this framework. This latter covers a broad spectrum of minimal
+patterns including all the languages and measures investigated in [7,10]. Fast
+minimality checking in a depth-ﬁrst traversal is achieved thanks to the notion of
+critical objects which depends on the minimizable set system. Based on this new
+technique, we propose the DeFMe algorithm. It mines the minimal patterns for
+any minimizable set system using a depth-ﬁrst search algorithm. To the best of
+our knowledge, this is the ﬁrst algorithm that enumerates minimal patterns in
+polynomial delay and in linear space with respect to the dataset.
+
+The outline of this paper is as follows. In Section 2, we propose our generic
+framework for minimal pattern mining based on set systems. We introduce our
+fast minimality checking method in Section 3 and we indicate how to use it
+by sketching the DeFMe algorithm. Section 4 provides experimental results. In
+Section 5, we discuss some related work in light of our framework.
+
+2 Minimizable Set System Framework
+
+2.1 Basic Deﬁnitions
+A set system (F , E) is a collection F of subsets of a ground set E (i.e. F is a
+subset of the power set of E). A member of F is called a feasible set. A strongly
+
+30
+
+A. Soulet and F. Rioult
+
+accessible set system (F , E) is a set system where for every feasible sets X, Y
+satisfying X ⊂ Y , there is an element e ∈ Y \ X such that Xe ∈ F 1. Obviously,
+I ,I) where I is the set of
+itemsets ﬁts this framework with the set system (2
+I,I) is even strongly accessible. But the notion of set system allows con-
+items. (2
+sidering more sophisticated languages. For instance, it is easy to build a family
+set FS denoting the collection of substrings of S = abracadabra by encoding each
+substring sk+1sk+2 . . . sk+n by a set {(sk+1, 1), (sk+2, 2), . . . , (sk+n, n)}. The set
+(cid:2)FS) is also strongly accessible. The set system formalism has
+sytem (FS, ES =
+already been used to describe pattern mining problems (see for instance [10]).
+
+Intuitively, a pattern always describes a set of objects. This set of objects is
+
+obtained from the pattern by means of a cover operator formalized as follows:
+Deﬁnition 1 (Cover operator). Given a set of objects O, a cover operator
+cov : 2E → 2
+is a function satisfying cov(X ∪ Y ) = cov(X) ∩ cov(Y ) for every
+X ∈ 2E and Y ∈ 2E.
+
+O
+
+This deﬁnition indicates that the coverage of the union of two patterns is
+exactly the intersection of their two covers. For itemsets, a natural cover operator
+is the extensive function of an itemset X that returns the set of tuple identiﬁers
+supported by X: covI (X) = {o ∈ O | X ⊆ o}. But, in general, the cover is
+not the ﬁnal aim: the cardinality of covI (X) corresponds to the frequency of
+X. In the context of strings, the index list of a string X also deﬁne a cover
+operator: covS(X) = {i | ∀(sj, j) ∈ X, (sj, j + i) ∈ S}. Continuing our example
+with the string S = abracadabra, it is not diﬃcult to compute the index lists
+covS({(a, 1)}) = {0, 3, 5, 7, 10} and covS({(b, 2)}) = {0, 7} and then, to verify
+covS({(a, 1), (b, 2)}) = covS({(a, 1)}) ∩ covS({(b, 2)}) = {0, 7}.
+
+For some languages, the same pattern is described by several distinct sets
+and then it is necessary to have a canonical form. For example, consider the
+set {(a, 1), (b, 2), (r, 3)} corresponding to the string abr. Its suﬃx {(b, 2), (r, 3)}
+encodes the same string br as {(b, 1), (r, 2)}. The latter is the canonical form
+of the string br. To retrieve the canonical form of a pattern, we introduce the
+notion of canonical operator:
+Deﬁnition 2 (Canonical operator). Given two set systems (F , E) and (G, E),
+a canonical operator φ : F∪G → F is a function satisfying (i) X ⊂ Y ⇒ φ(X) ⊂
+φ(Y ) and (ii) X ∈ F ⇒ φ(X) = X for all sets X, Y ∈ G.
+
+In this deﬁnition, the property (i) ensures us that the canonical forms of two
+comparable sets with respect to the inclusion remain comparable. The property
+(ii) means that the set system (F , E) includes all canonical forms. Continuing
+our example about strings, it is not diﬃcult to see that φS : {(sk, k), (sk+1, k +
+1), . . . , (sk+n, n)} (cid:10)→ {(sk, 1), (sk+1, 2), . . . , (sk+n, n− k + 1)} satisﬁes the two de-
+sired properties (i) and (ii). For instance, φS({(b, 2), (r, 3)}) returns the canonical
+form of the string {(b, 2), (r, 3)} which is {(b, 1), (r, 2)}.
+1 We use the notation Xe instead of X ∪ {e}.
+
+Eﬃciently Depth-First Minimal Pattern Mining
+
+31
+
+2.2 Minimizable Set System
+
+Rather than considering an entire set system, it is wise to select a smaller part
+that provides the same information (w.r.t. a cover operator). For this, it is neces-
+sary that this set system plus the cover operator form a minimizable set system:
+
+Deﬁnition 3 (Minimizable set system). A minimizable set system is a tuple
+(cid:11)(F , E),G, cov, φ(cid:12) where:
+– (F , E) is a ﬁnite, strongly accessible set system. A feasible set in F is called
+a pattern.
+– (G, E) is a ﬁnite, strongly accessible set system satisfying for every feasible
+set X, Y ∈ F such that X ⊆ Y and element e ∈ E, X\{e} ∈ G ⇒ Y \{e} ∈ G.
+A feasible set in G is called a generalization.
+
+– cov : 2E → 2
+– φ : F ∪G → F is a canonical operator such that for every feasible set X ∈ G,
+
+is a cover operator.
+
+O
+
+it implies cov(φ(X)) = cov(X).
+Let us now illustrate the role of G compared to F in the case of strings. In fact,
+GS gathers all the suﬃxes of any pattern of FS. Typically, {(b, 2), (r, 3)} ∈ GS is
+a generalization of {(a, 1), (b, 2), (r, 3)} ∈ FS. As said above, {(b, 2), (r, 3)} has
+an equivalent form in FS: φS({(b, 2), (r, 3)}) = {(b, 1), (r, 2)}. By convention, we
+extend the deﬁnition of covS to GS by considering that covS(φS(X)) = covS(X).
+In addition, it is not diﬃcult to see that GS satisﬁes the desired property with
+respect to FS: for every feasible set X, Y ∈ FS such that X ⊆ Y and element
+e ∈ ES, X \ {e} ∈ GS ⇒ Y \ {e} ∈ GS. Indeed, if X \ {e} is a suﬃx of X,
+it means that e is the ﬁrst letter. If we consider a specialization of X and we
+again remove the ﬁrst letter, we also obtain a suﬃx belonging to GS. Therefore,
+(cid:11)(FS, ES),GS, covS, φS(cid:12) is a minimizable set system.
+
+Obviously, a minimizable set system can be reduced to a system of smaller
+
+cardinality of which the patterns are called the minimal patterns:
+
+Deﬁnition 4 (Minimal
+for
+(cid:11)(F , E),G, cov, φ(cid:12) iﬀ X ∈ F and for every generalization Y ∈ G such
+that Y ⊂ X, cov(Y ) (cid:13)= cov(X). M(S) denotes the set of all minimal patterns.
+
+pattern). A pattern X is minimal
+
+Deﬁnition 4 means that a pattern is minimal whenever its cover diﬀers from
+that of any generalization. For example, for the cover operator covS, the minimal
+patterns have a strictly smaller cover than their generalizations. The string ab is
+not minimal due to its suﬃx b because covS({(b, 2))}) = covS({(a, 1), (b, 2)}) =
+{0, 7}. For our running example, the whole collection of minimal strings is
+M(SS) = {a, b, r, c, d, ca, ra, da}.
+Given a minimizable set system S = (cid:11)(F , E),G, cov, φ(cid:12), the minimal
+pattern mining problem consists in enumerating all the minimal pat-
+terns for S.
+
+32
+
+A. Soulet and F. Rioult
+
+3 Enumerating the Minimal Patterns
+
+This section aims at eﬀectively mining all the minimal patterns in a depth-ﬁrst
+search manner (Section 3.3). To do this, we rely on two key ideas: the pruning
+of the search space (Section 3.1) and the fast minimality checking (Section 3.2).
+Before, it is important to recall that the minimal patterns are suﬃcient to
+induce the cover of any pattern. From now, we consider a minimizable set system
+S = (cid:11)(F , E),G, cov, φ(cid:12). The minimal patterns M(S) is a lossless representation
+of all patterns of F in the sense we can ﬁnd the cover of any pattern.
+
+Theorem 1 (Condensed representation). The set of minimal patterns is a
+concise representation of F adequate to cov: for any pattern X ∈ F, there exists
+Y ⊆ X such that φ(Y ) ∈ M(S) and cov(φ(Y )) = cov(X).
+
+Theorem 1 means that M(S) is really a condensed representation of S because
+the minimal pattern mining enables us to infer the cover of any pattern in S. For
+instance, the cover of the non-minimal pattern {(a, 1), (b, 2)} equals to that of the
+minimal pattern φ({(b, 2)}) = {(b, 1)}: covS({(a, 1), (b, 2)}) = covS({(b, 1)}) =
+{0, 7}. It is preferable to extract M(S) instead of S because its size is lower
+(and, in general, much lower) than the total number of patterns.
+
+|E|
+
+3.1 Search Space Pruning
+The ﬁrst problem we face is fairly classical. Given a minimizable set system S =
+(cid:11)(F , E),G, cov, φ(cid:12), the number of patterns |F| is huge in general (in the worst
+patterns). So, it is absolutely necessary not to completely
+case, it reaches 2
+scan the search space for focusing on the minimal patterns. Eﬀective techniques
+can be used to prune the search space due to the downward closure of M(S):
+Theorem 2 (Independence system). If a pattern X is minimal for S, then
+any pattern Y ∈ F satisfying Y ⊆ X is also minimal for S.
+
+The proof of this theorem strongly relies on a key lemma saying that a non-
+minimal pattern has a direct generalization having the same cover (proofs are
+omitted due to lack of space):
+Lemma 1. If X is not mininal, there exists e ∈ X such that X \ {e} ∈ G and
+cov(X) = cov(X \ {e}).
+
+For instance, as the string da is minimal, the substrings d and a are also
+minimal. More interestingly, as ab is not minimal, the string abr is not minimal.
+It means that the string ab is a cut-oﬀ point in the search space. In practice, anti-
+monotone pruning is recognized as a very powerful tool whatever the traversal
+of the search space (level by level or in depth).
+
+Eﬃciently Depth-First Minimal Pattern Mining
+
+33
+
+3.2 Fast Minimality Checking
+
+The main diﬃculty in extracting the minimal patterns is to test whether a
+pattern is minimal or not. As we mentioned earlier, this is particularly diﬃcult in
+a depth-ﬁrst traversal because all subsets have not yet been enumerated. Indeed,
+depth-ﬁrst approaches only have access to the ﬁrst parent branch contrary to
+levelwise approaches. To overcome this diﬃculty, we introduce the concept of
+critical objects inspired from critical edges in case of minimal traversals [13].
+Intuitively, the critical objects of an element e for a pattern X are objects that
+are not covered by X due to the element e. We now give a formal deﬁnition of
+the critical objects derived from any cover operator:
+Deﬁnition 5 (Critical objects). For a pattern X, the critical objects of an
+element e ∈ X, denoted by (cid:3)cov(X, e) is the set of objects that belongs to the cover
+of X without e and not to the cover of e: (cid:3)cov(X, e) = cov(X \ e) \ cov(e).
+
+Let us illustrate the critical objects with our running example. For
+{(a, 1), (b, 2)}, the critical objects (cid:3)cov(ab, a) of the element (a, 1) correspond to
+∅ (= {0, 7} \ {0, 3, 5, 7, 10}). It means that the addition of a to b has no impact
+on the cover of ab. At the opposite, for the same pattern, the critical objects of
+(b, 2) are {3, 5, 10} (= {0, 3, 5, 7, 10} \ {0, 7}). It is due to the element b that ab
+does not cover the objects {3, 5, 10}.
+
+The critical objects are central in our proposition for the following reasons: 1)
+the critical objects easily characterize the minimal patterns; and 2) the critical
+objects can eﬃciently be computed in a depth-ﬁrst search algorithm.
+
+The converse of Lemma 1 says that a pattern is minimal if its cover diﬀers
+from that of its generalization. We can reformulate this deﬁnition thanks to the
+notion of critical objects as follows:
+Property 1 (Minimality). X ∈ F is minimal if ∀e ∈ X such that X \ e ∈ G,
+(cid:3)cov(X, e) (cid:13)= ∅.
+
+Typically, as b is a generalization of the string ab and at the same time, (cid:3)cov(ab, a)
+is empty, ab is not minimal. Property 1 means that checking whether a candidate
+X is minimal only requires to know the critical objects of all the elements in X. Un-
+like the usual deﬁnition, no information is required on the subsets. Therefore, the
+critical objects allow us to design a depth-ﬁrst algorithm if (and only if) computing
+the critical objects does not also require information on the subsets.
+In a depth-ﬁrst traversal, we want to update the critical objects of an element
+e for the pattern X when a new element e(cid:3)
+is added to X. In such case, we now
+show that the critical objects can eﬃciently be computed by intersecting the old
+set of critical objects (cid:3)cov(X, e) with the cover of the new element e(cid:3)
+Property 2. The following equality holds for any pattern X ∈ F and any two
+elements e, e(cid:3) ∈ E: (cid:3)cov(Xe(cid:3), e) = (cid:3)cov(X, e) ∩ cov(e(cid:3)
+For instance, Deﬁnition 5 gives (cid:3)covS(a, a) = {1, 2, 4, 6, 8, 9}. As covS(b) =
+{0, 7}, we obtain that (cid:3)covS(ab, a) = (cid:3)covS(a, a) ∩ covS(b) = {1, 2, 4, 6, 8, 9} ∩
+{0, 7} = ∅. Interestingly, Property 2 allows us to compute the critical objects
+
+).
+
+:
+
+34
+
+A. Soulet and F. Rioult
+
+of any element included in a pattern X having information on a single branch.
+This is an ideal situation for a depth-ﬁrst search algorithm.
+
+3.3 Algorithm DeFMe
+The algorithm DeFMe takes as inputs the current pattern and the current tail
+(the list of the remaining items to be checked) and it returns all the minimal
+patterns containing X (based on tail). More precisely, Line 1 checks whether
+X is minimal or not. If X is minimal, it is output (Line 2). Lines 3-14 explores
+the subtree containing X based on the tail. For each element e where Xe is a
+pattern of F (Line 4) (Property 1), the branch is built with all the necessary
+information. Line 7 updates the cover and Lines 8-11 updates the critical objects
+using Property 2. Finally, the function DeFMe is recursively called at Line 12
+with the updated tail (Line 5).
+
+Algorithm 1. DeFMe(X, tail)
+Input: X is a pattern, tail is the set of the remaining items to be used in order to
+
+generate the candidates. Initial values: X = ∅, tail = E.
+
+print X
+for all e ∈ tail do
+if Xe ∈ F then
+tail := tail \ {e}
+Y := Xe
+cov(Y ) := cov(X) ∩ cov(e)
+(cid:2)cov(Y, e) := cov(X) \ cov(e)
+for all e(cid:2) ∈ X do
+
+Output: polynomially incrementally outputs the minimal patterns.
+1: if ∀e ∈ X, (cid:2)cov(X, e) (cid:6)= ∅ then
+2:
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15: end if
+
+end for
+DeFMe(Y, tail)
+
+end if
+end for
+
+(cid:2)cov(Y, e(cid:2)
+
+) := (cid:2)cov(X, e(cid:2)
+
+) ∩ cov(e)
+
+Theorems 3 and 4 demonstrate that the algorithm DeFMe has an eﬃcient be-
+havior both in space and time. This eﬃciency mainly stems from the inexpensive
+handling of covers/critical objects as explained by the following property:
+Property 3. The following inequality holds for any pattern X ∈ F :
+
+|cov(X)| +
+
+| (cid:3)cov(X, e)| ≤ |cov(∅)|
+
+(cid:4)
+
+e∈X
+
+Property 3 means that for a pattern, the storage of its cover plus that of all the
+critical objects is upper bounded by the number of objects (i.e., |cov(∅)|). Thus,
+it is straightforward to deduce the memory space required by the algorithm:
+Theorem 3 (Polynomial-space complexity). M(S)
+O(|cov(∅)| × m) space where m is the maximal size of a feasible set in F .
+
+is enumerable in
+
+Eﬃciently Depth-First Minimal Pattern Mining
+
+35
+
+In practice, the used memory space is very limited because m is small. In
+
+addition, the amount of time between each output pattern is polynomial:
+Theorem 4 (Polynomial-delay complexity). M(S)
+O(|E|2 × |cov(∅)|) time per minimal pattern.
+
+is enumerable in
+
+It is not diﬃcult to see that between two output patterns, DeFMe requires
+a polynomial number of operations assuming that the membership oracle is
+computable in polytime (Line 4). Indeed, the computation of the cover and that
+of the critical objects (Lines 7-11) is linear with the number of objects due to
+Property 3; the loop in Line 3 does not exceed |E| iterations and ﬁnally, the
+number of consecutive backtracks is at most |E|.
+
+4 Experimental Study
+
+The aim of our experiments is to quantify the beneﬁt brought by DeFMe both on
+eﬀectiveness and conciseness. We show its eﬀectiveness with the problem of free
+itemset mining for which several prototypes already exist in the literature. Then
+we instantiate DeFMe to extract the collection of minimal strings and compare
+its size with that of closed strings. All tests were performed on a 2.2 GHz Opteron
+processor with Linux operating system and 200 GB of RAM memory.
+
+4.1 Free Itemset Mining
+
+We designed a prototype of DeFMe for itemset mining as a proof of concept and
+we compared it with two other prototypes: ACminer based on a levelwise algo-
+rithm [1] and NDI2 based on a depth-ﬁrst traversal with reordered items [11]. For
+this purpose, we conducted experiments on benchmarks coming from the FIMI
+repository and the 2004 PKDD Discovery Challenge3. The ﬁrst three columns
+of Table 1 give the characteristics of these datasets. The fourth column gives
+the used minimal support threshold. The next three columns report the running
+times and ﬁnally, the last three columns indicate the memory consumption.
+
+The best performances are highlighted in bold in Table 1 for both time and
+space. ACminer is by far the slowest prototype. Its levelwise approach is par-
+ticularly penalized by the large amount of used memory. Except on the genomic
+datasets 74x822 and 90x27679, the running times of NDI clearly outperform
+those of DeFMe. As a piece of information, Figure 1 details, for various minsup
+thresholds, the speed of DeFMe. It plots the number of minimal patterns it
+extracted for each second of computing time.
+
+Concerning memory consumption, DeFMe is (as expected) the most eﬃcient
+algorithm. In certain cases, the increase of the storage memory would not be
+suﬃcient to treat the most diﬃcult datasets. Here, ACminer and NDI are
+
+2 As this prototype mines non-derivable itemsets, it enable us to compute free patterns
+
+when the depth parameter is set to 1.
+fimi.ua.ac.be/data/ and lisp.vse.cz/challenge/ecmlpkdd2004/
+
+3
+
+36
+
+A. Soulet and F. Rioult
+
+Table 1. Characteristics of benchmarks and results about free itemset mining
+
+time (s)
+
+memory (kB)
+
+dataset
+74x822
+90x27679
+chess
+connect
+pumsb
+pumsb*
+
+822
+74
+90 27,679
+75
+3,196
+67,557
+129
+49,046 2,113
+49,046 2,088
+
+88%
+91%
+22%
+7%
+51%
+5%
+
+objects items minsup ACminer NDI DeFMe ACminer
+fail
+fail
+
+fail
+fail
+
+fail
+fail
+6,623 187
+34,943 115
+70,014 212
+21,267 202
+
+45
+79
+192 3,914,588 1,684,540
+
+NDI DeFMe
+3,328
+fail
+fail 13,352
+8,744
+4,873 2,087,216 1,181,296 174,680
+548 7,236,812 1,818,500 118,240
+4,600 5,175,752 2,523,384 170,632
+
+not suitable to process genomic datasets even with 200GB of RAM memory
+and relatively high thresholds. More precisely, Figure 1 plots the ratio between
+NDI’s and DeFMe’s memory use for various minsup thresholds. It is easy to
+notice that this ratio quickly leads NDI to go out of memory. DeFMe works
+with bounded memory and then is not minsup limited.
+
+Fig. 1. Ratio of mining speed (left) and memory use (right) of NDI by DeFMe
+
+4.2 Minimal String Mining
+
+In this section, we adopt the formalism of strings stemming from our running ex-
+ample. We compared our algorithm for minimal string mining with the maxMotif
+prototype provided by Takeaki Uno that mines closed strings [10]. Our goal is to
+compare the size of condensed representations based on minimal strings with those
+based on all strings and all closed strings. We do not report the execution times
+because maxMotif developed in Java is much slower than DeFMe (developed in
+C++). Experiments are conducted on two datasets: chromosom4 and msnbc com-
+ing from the UCI ML repository (www.ics.uci.edu/~mlearn).
+
+Figure 2 and 3 report the number of strings/minimal strings/closed strings
+mined in chromosom and msnbc. Of course, whatever the collection of patterns,
+
+4 This dataset is provided with maxMotif: research.nii.ac.jp/~uno/codes.htm
+
+Eﬃciently Depth-First Minimal Pattern Mining
+
+37
+
+107
+
+106
+
+105
+
+104
+
+103
+
+s
+n
+r
+e
+
+t
+t
+
+a
+p
+
+ 
+
+#
+
+max
+min
+all
+
+109
+
+108
+
+107
+
+106
+
+105
+
+104
+
+103
+
+102
+
+s
+n
+r
+e
+
+t
+t
+
+a
+p
+
+ 
+
+#
+
+max
+min
+all
+
+102
+
+100
+
+101
+
+minsup
+
+102
+
+101
+
+100
+
+101
+
+102
+
+103
+
+104
+
+105
+
+minsup
+
+Fig. 2. Number of patterns in chromosom
+
+Fig. 3. Number of patterns in msnbc
+
+the number of patterns increases with the decrease of the minimal frequency
+threshold. Interestingly, the two condensed representations become particularly
+useful when the frequency threshold is very small. Clearly the number of mini-
+mal strings is greater than the number of closed strings, but the gap is not as
+important as it is the case with free and closed itemsets.
+
+5 Related Work
+
+The collection of minimal patterns is a kind of condensed representations. Let
+us recall that a condensed representation of the frequent patterns is a set of pat-
+terns that can regenerate all the patterns that are frequent with their frequency.
+The success of the condensed representations stems from their undeniable bene-
+ﬁt to reduce the number of mined patterns by eliminating redundancies. A large
+number of condensed representations have been proposed in literature [6,14]:
+closed itemsets [2], free itemsets [1], essential itemsets [15], Non-Derivable Item-
+sets [11], itemsets with negation [16] and so on. Two ideas are at the core of
+the condensed representations: the closure operator [14] that builds equivalence
+classes and the principle of inclusion-exclusion. As the inclusion-exclusion prin-
+ciple only works for the frequency, this paper exclusively focuses on minimal
+patterns considering equivalence classes. In particular, as indicated above the
+I , covI, Id(cid:12) is minimizable and M(SI ) corresponds ex-
+system SI = (cid:11)(2
+actly to the free itemsets (or generators). The frequency of each itemset is com-
+puted using the cardinality of the cover. Replace the cover operator covI by
+covI : X (cid:10)→ {o ∈ O | X ∩ o = ∅} leads to a new minimizable set system
+I , covI , Id(cid:12) of which minimal patterns are essential itemsets [15]. The
+(cid:11)(2
+disjunctive frequency of an itemset X is |O| − |covI (X)|.
+
+I,I), 2
+
+I,I), 2
+
+Minimal pattern mining has a lot of applications and their use is not limited
+to obtain frequent patterns more eﬃciently. Their properties are useful for higher
+KDD tasks. For instance, minimal patterns are used in conjunction of closed pat-
+terns to produce non-redundant [3] or informative rules [2]. The sequential rules
+also beneﬁt from minimality [17]. It is also possible to exploit the minimal pat-
+terns for mining the classiﬁcation rules that are the key elements of associative
+
+38
+
+A. Soulet and F. Rioult
+
+classiﬁers [4]. Our framework is well-adapted for mining all such minimal classi-
+ﬁcation rules that satisfy interestingness criteria involving frequencies.Assuming
+
+that the set of objects O is divided into two disjoint classes O = O1 ∪ O2, the
+conﬁdence of the classiﬁcation rule X → class1 is |O1 ∩ covI (X)|/|covI (X)|.
+
+More generally, it is easy to show that any frequency-based measure (e.g., lift,
+bond) can be derived from the positive and negative covers. In addition, the
+essential patterns are useful for deriving minimal traversals that exactly corre-
+sponds to the maximal patterns of M((cid:11)(2
+I, covI , Id(cid:12)). Let us recall that
+the minimal transversal generation is a very important problem which has many
+applications in Logic (e.g., satisﬁability checking), Artiﬁcial Intelligence (e.g.,
+model-based diagnosis) and Machine Learning (e.g., exact learning) [5,13].
+
+I ,I), 2
+
+I,I), 2
+
+The condensed representations of minimal patterns are not limited to
+frequency-based measures or itemsets. Indeed, it is also possible to mine the min-
+imal patterns adequate to classical aggregate functions like min, max or sum [7].
+Minizable set systems are also well-adapted for such measures. For instance, let
+us consider the function covmin(X) = {val(i)|∃i ∈ I, val(i) ≤ min(X.val)} that
+returns all the possible values of val less than min(X.val). This function is a
+I , covmin, Id(cid:12) is even a minimizable set system. The
+cover operator and (cid:11)(2
+minimal patterns adequate to min correspond to the minimal patterns of the
+previous set system. Furthermore, the value min(X.val) could be obtained as
+follows max(covmin(X)). A similar approach enables us to deal with max and
+sum. In parallel, several studies have extended the notion of generators to ad-
+dress other languages such as sequences [8,18], negative itemsets [19], graphs [20].
+Unfortunately no work proposes a generic framework to extend the condensed
+representations based on minimality to a broad spectrum of languages as it was
+done with closed patterns [10]. For instance, [1,2,11,12] only address itemsets or
+[8,18] focus exclusively on sequences. In this paper, we have made the connec-
+tion between the set systems and only two languages: itemsets and strings due
+to space limitation. Numerous other languages can be represented using this set
+system framework. In particular, all the languages depicted by [10] are suitable.
+
+6 Conclusion
+
+By proposing the new notion of minimizable set system, this paper extended the
+paradigm of minimal patterns to a broad spectrum of functions and languages.
+This framework encompasses the current methods since the existing condensed
+representations (e.g., free or essential itemsets) ﬁt to speciﬁc cases of our frame-
+work. Besides, DeFMe eﬃciently mines such minimal patterns even in diﬃcult
+datasets, which are intractable by state-of-the-art algorithms. Experiments also
+showed on strings that the sizes of the minimal patterns are smaller than the
+total number of patterns.
+
+Of course, we think that there is still room to improve our implementation
+even if it is diﬃcult to ﬁnd a compromise between generic method and speed.
+We especially want to test the ability of the minimal patterns for generating
+minimal classiﬁcation rules with new types of data, such as strings. Similarly, it
+would be interesting to build associative classiﬁers from minimal patterns.
+
+Eﬃciently Depth-First Minimal Pattern Mining
+
+39
+
+Acknowledgments. This article has been partially funded by the Hybride
+project (ANR-11-BS02-0002).
+
+References
+
+1. Boulicaut, J.-F., Bykowski, A., Rigotti, C.: Approximation of frequency queries by
+means of free-sets. In: Zighed, D.A., Komorowski, J., ˙Zytkow, J.M. (eds.) PKDD
+2000. LNCS (LNAI), vol. 1910, pp. 75–85. Springer, Heidelberg (2000)
+
+2. Pasquier, N., Bastide, Y., Taouil, R., Lakhal, L.: Eﬃcient mining of association
+
+rules using closed itemset lattices. Inf. Syst. 24(1), 25–46 (1999)
+
+3. Zaki, M.J.: Generating non-redundant association rules. In: KDD, pp. 34–43 (2000)
+4. Liu, B., Hsu, W., Ma, Y.: Integrating classiﬁcation and association rule mining.
+
+In: KDD, pp. 80–86 (1998)
+
+5. Eiter, T., Gottlob, G.: Hypergraph transversal computation and related problems
+in logic and AI. In: Flesca, S., Greco, S., Leone, N., Ianni, G. (eds.) JELIA 2002.
+LNCS (LNAI), vol. 2424, pp. 549–564. Springer, Heidelberg (2002)
+
+6. Calders, T., Rigotti, C., Boulicaut, J.-F.: A survey on condensed representations
+for frequent sets. In: Boulicaut, J.-F., De Raedt, L., Mannila, H. (eds.) Constraint-
+Based Mining. LNCS (LNAI), vol. 3848, pp. 64–80. Springer, Heidelberg (2006)
+
+7. Soulet, A., Cr´emilleux, B.: Adequate condensed representations of patterns. Data
+
+Min. Knowl. Discov. 17(1), 94–110 (2008)
+
+8. Lo, D., Khoo, S.C., Li, J.: Mining and ranking generators of sequential patterns.
+
+In: SDM, pp. 553–564. SIAM (2008)
+
+9. Li, J., Li, H., Wong, L., Pei, J., Dong, G.: Minimum description length principle:
+
+Generators are preferable to closed patterns. In: AAAI, pp. 409–414 (2006)
+
+10. Arimura, H., Uno, T.: Polynomial-delay and polynomial-space algorithms for min-
+ing closed sequences, graphs, and pictures in accessible set systems. In: SDM, pp.
+1087–1098. SIAM (2009)
+
+11. Calders, T., Goethals, B.: Depth-ﬁrst non-derivable itemset mining. In: SDM, pp.
+
+250–261 (2005)
+
+12. Liu, G., Li, J., Wong, L.: A new concise representation of frequent itemsets using
+
+generators and a positive border. Knowl. Inf. Syst. 17(1), 35–56 (2008)
+
+13. Murakami, K., Uno, T.: Eﬃcient algorithms for dualizing large-scale hypergraphs.
+
+In: ALENEX, pp. 1–13 (2013)
+
+14. Hamrouni, T.: Key roles of closed sets and minimal generators in concise represen-
+
+tations of frequent patterns. Intell. Data Anal. 16(4), 581–631 (2012)
+
+15. Casali, A., Cicchetti, R., Lakhal, L.: Essential patterns: A perfect cover of frequent
+patterns. In: Tjoa, A.M., Trujillo, J. (eds.) DaWaK 2005. LNCS, vol. 3589, pp.
+428–437. Springer, Heidelberg (2005)
+
+16. Kryszkiewicz, M.: Generalized disjunction-free representation of frequent patterns
+
+with negation. J. Exp. Theor. Artif. Intell. 17(1-2), 63–82 (2005)
+
+17. Lo, D., Khoo, S.C., Wong, L.: Non-redundant sequential rules - theory and algo-
+
+rithm. Inf. Syst. 34(4-5), 438–453 (2009)
+
+18. Gao, C., Wang, J., He, Y., Zhou, L.: Eﬃcient mining of frequent sequence genera-
+
+tors. In: WWW, pp. 1051–1052. ACM (2008)
+
+19. Gasmi, G., Yahia, S.B., Nguifo, E.M., Bouker, S.: Extraction of association rules
+based on literalsets. In: Song, I.-Y., Eder, J., Nguyen, T.M. (eds.) DaWaK 2007.
+LNCS, vol. 4654, pp. 293–302. Springer, Heidelberg (2007)
+
+20. Zeng, Z., Wang, J., Zhang, J., Zhou, L.: FOGGER: an algorithm for graph gener-
+
+ator discovery. In: EDBT, pp. 517–528 (2009)
+
+

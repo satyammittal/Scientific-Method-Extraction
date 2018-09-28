@@ -1,0 +1,789 @@
+A New Evaluation Function for Entropy-Based
+
+Feature Selection from Incomplete Data
+
+Wenhao Shu1, Hong Shen2,3, Yingpeng Sang1, Yidong Li1, and Jun Wu1
+
+1 School of Computer and Information Technology, Beijing Jiaotong University,
+
+Beijing, China
+
+2 School of Information Science and Technology, Sun Yat-sen University, China
+
+3 School of Computer Science, University of Adelaide, Australia
+
+11112084@bjtu.edu.cn, hongsh01@gmail.com
+
+Abstract. In data mining and knowledge discovery, evaluation func-
+tions for evaluating the quality of features have great inﬂuence on the
+outputs of feature selection algorithms. However, in the existing entropy-
+based feature selection algorithms from incomplete data, evaluation func-
+tions are often inadequately computed as a result of two drawbacks. One
+is that the existing evaluation functions have not taken into consider-
+ation the diﬀerences of discernibility abilities of features. The other is
+that in the feature selection algorithms of forward greedy search, if the
+feature with the same entropy value is not only one, the arbitrary selec-
+tion may aﬀect the classiﬁcation performance. This paper introduces a
+new evaluation function to overcome the drawbacks. A main advantage
+of the proposed evaluation function is that the granularity of classiﬁca-
+tion is considered in the evaluation computations for candidate features.
+Based on the new evaluation function, an entropy-based feature selection
+algorithm from incomplete data is developed. Experimental results show
+that the proposed evaluation function is more eﬀective than the existing
+evaluation functions in terms of classiﬁcation accuracy.
+
+Keywords: Evaluation function, Conditional entropy, Feature selection,
+Rough sets, Incomplete data.
+
+1 Introduction
+
+Feature reduction has been shown eﬀective in dealing with high-dimensional
+data for eﬃcient data mining, which refers to the study of methods for reduc-
+ing the number of dimensions describing data [4, 10]. Its general purpose is to
+select relevant features to represent data and reduce computational cost, with-
+out deteriorating discriminative capability. It can bring many potential beneﬁts:
+alleviating the curse of dimensionality, speeding up the learning process, and im-
+proving the generalization capability of a learning model. Many feature reduction
+algorithms have been developed at present. In general, they can be broadly clas-
+siﬁed into two categories: feature extraction and feature selection [5]. Feature
+extraction constructs new features with a linear or nonlinear transformation by
+projecting the original feature space to a lower dimensional one. Unlike feature
+
+V.S. Tseng et al. (Eds.): PAKDD 2014, Part II, LNAI 8444, pp. 98–109, 2014.
+c(cid:2) Springer International Publishing Switzerland 2014
+
+A New Evaluation Function for Entropy-Based Feature Selection
+
+99
+
+extraction methods, feature selection methods preserve the original meaning of
+the features after reduction, which can be broadly categorized into wrapper [1]
+and ﬁlter [7, 9] methods. The wrapper method uses the predictive accuracy of a
+predetermined learning algorithm to determine the quality of selected features.
+One drawback of the wrapper method, however, is that it is very expensive to
+run for data with numbers of features. The ﬁlter method separates feature se-
+lection from classiﬁer learning so that the bias of a learning algorithm does not
+interact with a feature selection algorithm. It relies on many feature measures
+such as distance [3], consistency [11], correlation [2] and so on. Much attention
+has been paid to ﬁlter feature selection.
+
+Generally speaking, ﬁlter feature selection methods work under the framework
+consisting of four components [4]: subset generation, evaluation, stopping crite-
+rion and result validation. The main diﬀerence among various feature selection
+algorithms lies in how to evaluate the candidate features. Obviously, evaluation
+functions have great inﬂuence on outputs of feature selection algorithms. Rough
+set theory oﬀers a formal methodology for ﬁlter feature selection. The main ad-
+vantage of rough set theory is that no additional information about the data is
+required for data analysis such as thresholds or expert knowledge on a particu-
+lar domain. It provides a mathematical tool to handle uncertainty in many data
+analysis tasks [6, 13]. The feature subset obtained by rough set-based feature
+selection is called a reduct. The features in the reduct are not only strongly
+relevant to the classiﬁcation task, but also no redundant with each other, which
+keep consistency with the objective of feature selection.
+
+It is clear that the feature selection work in classical rough set theory is based
+on complete data. However, in many real-world applications, it may happen
+that some feature values are missing because of many factors such as noise in
+data, prediction capability [12, 13, 15]. Here we brieﬂy review the state of the
+art about feature selection algorithms from incomplete data. Sun et al. [12]
+introduced rough entropy to evaluate the roughness of knowledge in incomplete
+data, and developed a rough entropy-based feature selection algorithm. Slezak
+[14] proposed an algorithm based on information entropy to compute a reduct. As
+the uncertainty measure, conditional entropy, is one key issue in rough set theory,
+Dai et al. [15] proposed conditional entropy for incomplete data, and studied
+the application of feature selection based on conditional entropy. Evaluation
+functions, used to evaluate the quality of features, have great inﬂuence on the
+outputs of feature selection algorithms. However, there are some drawbacks in the
+existing evaluation functions. On the one hand, the existing evaluation functions
+only consider the diﬀerences of entropy values’ variation, but there exists the
+diﬀerences of discernibility abilities for candidate features. As much as we know,
+the existing research work has not considered this aspect. Even if there are
+multiple features leading to the same entropy values, we can still compare the
+discernibility power of the features according to the granularity measure. On
+the other hand, for the forward greedy search, if the feature with the same
+entropy values is not only one, we often arbitrarily choose one of them, but
+the arbitrariness may aﬀect the classiﬁcation performance. Therefore, the main
+
+100
+
+W. Shu et al.
+
+contribution of this paper is to present a new evaluation function to overcome
+the above stated drawbacks.
+
+This paper is organized as follows. In Section 2, we review some basic concepts
+from the theory of rough sets. In Section 3, a simple example is ﬁrstly given to
+illustrate the drawbacks of existing evaluation functions, and then a new eval-
+uation function together with an entropy-based feature selection algorithm are
+presented. In Section 4, comparison experiments are made to show the validity
+of the proposed evaluation function. Finally, the conclusions are presented in
+Section 5.
+
+2 Preliminaries
+
+Data sets are usually given as the form of tables, we call a data table as an infor-
+mation system, formulated as IS =< U, A, V, f >, where U is a set of nonempty
+and ﬁnite objects, called the universe; A is the set of features characterizing the
+objects; V is the union of feature domains, i.e., V = ∪a∈AVa, where Va is the
+value set of feature a, called the domain of a; and f : U × A → V is an infor-
+mation function, which assigns feature values to objects such as ∀a ∈ A, x ∈ U,
+and f (x, a) ∈ Va, where f (x, a) denotes the value of feature a for object x. If the
+feature set is divided into condition feature set C and decision feature set D, the
+information system is called a decision system. If there exist x ∈ U and a ∈ A
+such that f (x, a) is equal to a missing value (a null or unknown value, denoted
+as “*”), i.e., ∗ ∈ Va, then the information system is an incomplete information
+system (IIS). If ∗ /∈ VD but ∗ ∈ VC, then the decision system is an incomplete
+decision system (IDS).
+Given a complete information system CIS =< U, A, V, f >, for ∀B ⊆ A,
+the equivalence relation generated by B is deﬁned by IN D(B) = {(x, y)|∀a ∈
+B, f (x, a) = f (y, a)}. The family of all equivalence classes of IN D(B) is denoted
+as U/IN D(B). An equivalence class of IN D(B) containing x is denoted by [x]B.
+Since there are missing values for some objects, the equivalence relation IN D(B)
+is not suitable for incomplete information systems.
+Given an incomplete information system IIS =< U, A, V, f >, for ∀B ⊆ A, a
+tolerance relation between objects that are possibly indiscernible in terms of B is
+deﬁned by T R(B) = {(x, y)|∀a ∈ B, f (x, a) = f (y, a)∨f (x, a) = ∗∨f (y, a) = ∗}.
+It can be easily shown that T R(B) = ∩a∈BT R({a}). The tolerance class of object
+x with reference to a feature set B is denoted as T B(x) = {y|(x, y) ∈ T R(B)}.
+Let U/T R(B) denote the family set {TB(x)|x ∈ U}, which is the classiﬁcation
+induced by B. For X ⊆ U, the lower and upper approximation of X with respect
+to B can be deﬁned as B(X) = {x ∈ U|T B(x) ⊆ X} and B(X) = {x ∈
+U|T B(x)∩ X (cid:10)= ÃŸ}. The lower approximation is called the positive region, that
+is P OSB(X) = B(X). X is called B−deﬁnable iﬀ B(X) = B(X). Otherwise,
+B(X) (cid:10)= B(X) and X is rough.
+Given an incomplete decision system IDS =< U, C ∪ D, V, f >, for ∀B ⊆ C,
+the objects are partitioned into n mutually exclusion crisp subsets U/IN D(D) =
+{D1, D2,··· , Dn} by the decision features D. The lower and upper approxima-
+tions with respect to B of D are deﬁned as B(D) = {B(D1), B(D2),··· , B(Dn)}
+
+A New Evaluation Function for Entropy-Based Feature Selection
+
+101
+
+and B(D) = {B(D1), B(D2),··· , B(Dn)}. Denoted by P OSB(D) =
+i=1 B(Di),
+which is called the positive region of D with respect to B in the IDS. The lower
+approximation is a description of the domain objects which are known with
+absolute certainty to belong to the decision classes.
+
+(cid:2)n
+
+3 An Evaluation Function for Entropy-Based Feature
+
+Selection
+
+In this section, a simple example is ﬁrstly given to illustrate the drawbacks of
+existing evaluation functions, and then a new evaluation function together with
+a entropy-based feature selection algorithm are presented.
+
+The conditional entropy of Deﬁnition 1 can be used as a reasonable infor-
+mation measure in incomplete decision tables[15], and it is quite representative
+among other entropies. Correspondingly, the evaluation function in terms of con-
+ditional entropy is also deﬁned.
+Deﬁnition 1. Let IDS =< U, C ∪ D, V, f >be an incomplete decision table,
+U = {x1, x2, . . . , xn}, for B ⊆ C, the classiﬁcation induced by B is U/T R(B) =
+{T B(x1), T B(x2), . . . , T B(xn)}, and U/IN D(D) = {D1, D2,··· , Dm} is a par-
+tition on decision attribute set D. The conditional entropy of D with respect to
+B is deﬁned by
+
+H(D|B) = − n(cid:3)
+
+m(cid:3)
+
+i=1
+
+j=1
+
+|TB (xi)∩Dj|
+
+|U|
+
+|TB(xi)∩Dj|
+
+|TB (xi)|
+
+.
+
+log
+
+Deﬁnition 2. Given an incomplete decision table IDS =< U, C ∪ D, V, f >,
+suppose B ⊆ C is the selected feature subset, and a ∈ C − B is a candidate
+feature. Then the evaluation function of candidate feature a is deﬁned as e(a) =
+H(D|B) − H(D|B ∪ {a}).
+
+From Deﬁnition 2, the existing evaluation function can be used to evaluate the
+importance of features. The smaller the evaluation value is, the more important
+the feature will be. However, the drawbacks of above evaluation function can be
+explained with reference to the following example.
+Example. Suppose there is an incomplete decision table IDS =< U, C ∪
+D, V, f >, where U = {x1, x2, x3, x4, x5, x6, x7, x8} and C = {c1, c2, c3, c4}. In
+the feature selection process, Deﬁnition 2 is applied to compute the evaluation
+values of features. By computing, the descending sequence of four candidate fea-
+tures is listed as follows: e(c1) > e(c2) > e(c3) = e(c4). Obviously, the features
+with the minimum evaluation value are c3 and c4. By direct computation the clas-
+siﬁcations induced by two features, U/T R(c3) = {{x1, x2, x5, x6},{x3, x4, x7, x8}}
+and U/T R(c4) = {{x1, x2},{x3, x4},{x5, x6}, {x7, x8}}, obviously, the discerni-
+bility abilities of them are diﬀerent, feature c3 can describe the stronger discerni-
+bility power than c4. However, Deﬁnition 2 does not take into consideration this
+diﬀerence. Thus the evaluation function given by Deﬁnition 2 is inadequately
+computed as a result of this aspect.
+
+102
+
+W. Shu et al.
+
+On the other hand, in the feature selection algorithm of forward greedy search,
+due to e(c3) = e(c4), we can select one feature arbitrarily. Consequently, feature
+c3 or c4 are chosen to the selected feature subset. The arbitrariness can surely
+not guarantee a selected feature subset is a reduct. Suppose that the selected
+feature subset containing feature c3 and c2 exhibit the best performance, but
+we obtain the ﬁnal feature subset is {c4, c2} due to the arbitrary selection. Ob-
+viously, this result may aﬀect the classiﬁcation performance. Therefore, we give
+a new evaluation function from a reasonable perspective to improve the above
+mentioned problems.
+Deﬁnition 3. Given an incomplete decision table IDS =< U, C ∪ D, V, f >,
+suppose B ⊆ C is the selected feature subset, and a ∈ C − B is a candidate
+feature, the classiﬁcation induced by a consists of tolerance class Ai(1 ≤ i ≤ k).
+Then a new evaluation function of candidate feature a is deﬁned as f (a) =
+|Ai|2, which is the granularity measure of
+e(a) + g(a), where g(a) = 1|U|2
+feature a.
+Theorem 1. Given an incomplete decision table IDS =< U, C ∪ D, V, f >,
+suppose B ⊆ C is the selected feature subset, for ∀a, b ∈ C−B, there is f (a∪b) <
+f (a) or f (a ∪ b) < f (b).
+Proof. Suppose the classiﬁcation induced by a consists of tolerance classes Ai(1 ≤
+i ≤ k), and the classiﬁcation induced by a ∪ b consists of tolerance classes
+Bj(1 ≤ j ≤ l), by Deﬁnition 2 and the deﬁnition of conditional entropy, it
+is obvious that e(a ∪ b) < e(a). Since a ⊆ a ∪ b, according to the deﬁnition of
+tolerance class, there is |Bj| < |Ai|, obviously, it holds that
+|Ai|2,
+thus g(a ∪ b) < g(a). Therefore, f (a ∪ b) < f (a). In the same way, it can proof
+that f (a ∪ b) < f (b).
+
+|Bj|2 <
+
+k(cid:3)
+
+k(cid:3)
+
+i=1
+
+i=1
+
+l(cid:3)
+
+j=1
+
+Theorem 1 shows the rationality of the new evaluation function, which states
+the uncertainty decreases when the available knowledge increases. Obviously, the
+granularity measure can represent discernibility ability of candidate feature a,
+the smaller g(a) is, the stronger its discernibility ability. Through comparison,
+the selection of survival features can be achieved. From above example, there is
+g(c3) > g(c4), thus it also holds that f (c3) > f (c4), the discernibility ability of
+candidate feature c4 is stronger than that of feature c3. Therefore, the survival
+feature is c4. It is obvious that the new evaluation function is more reasonable.
+Combine the new evaluation function into feature selection, a selected feature
+subset (called reduct) can be characterized by the following statement.
+Deﬁnition 4. Given an incomplete decision table IDS =< U, C ∪ D, V, f >,
+a selected feature subset B ⊆ C is called a reduct of the IDS if and only if
+H(D|B) = H(D|C), and for∀B
+
+(cid:5) ⊂ B, H(D|B
+
+(cid:5)) (cid:10)= H(D|C).
+
+In this deﬁnition, the ﬁrst one indicates that the selected feature subset pre-
+serves the same information measure as the whole set of features; the second
+
+A New Evaluation Function for Entropy-Based Feature Selection
+
+103
+
+one guarantees that all of the features are indispensable, i.e., there is not any
+redundant feature in the reduct.
+
+In the following, we combine the proposed evaluation function with forward
+
+greedy search to construct the feature selection algorithm.
+
+Algorithm 1. Entropy-based Feature Selection Algorithm from Incom-
+plete Data
+Input: An incomplete decision table IDS =< U, C ∪ D, V, f >;
+Output: A feature subset Red.
+Begin
+1. Initialize Red = ∅;
+2. For each c ∈ C do
+3.
+4.
+5. End for
+6. While H(D|Red) (cid:10)= H(D|C) do
+7.
+8.
+
+compute f (c) for all c ∈ C − Red;
+choose the feature ck that minimizes f (c), and let Red = Red ∪ {ck},
+
+compute H(D|C − {c}) − H(D|C);
+if H(D|C − {c}) − H(D|C) > 0, then Red = Red ∪ {c};
+
+C = C − {ck};
+
+9. End while
+10. For each c ∈ Red do
+11.
+12.
+13. End for
+14. Return Red.
+
+compute H(D|Red) − H(D|Red − {c});
+if H(D|Red) − H(D|Red − {c}) = 0, then Red = Red − {c};
+
+End
+
+The algorithm begins with an empty subset Red, and adds some indispens-
+able features to Red gradually. Then select the features with the minimal value
+by the new evaluation function into Red each loop until satisfying the stopping
+condition. Finally, a redundancy-removing step is carried out to avoid the re-
+dundancy in the selection result. The feature subset selected by this algorithm
+obtains the same information as the original feature set from incomplete data.
+
+4 Experimental Analysis
+
+In order to test the validity of the new proposed evaluation function, we conduct
+some experiments on a PC with Windows 7, Intel (R) Core(TM) Duo CPU 2.93
+GHz and 4GB memory. Algorithms are coded in C++ and the software being
+used is Microsoft Visual 2008. The objective of the following experiments is to
+show the eﬀectiveness of feature selection algorithm based on the new evaluation
+function. We perform the experiments on six real UCI data sets, which are
+
+104
+
+W. Shu et al.
+
+downloaded from UCI Repository of machine learning databases in [16]. The
+characteristics of six data sets are described in Table 1. For the complete data
+sets, we randomly change 5% of the known features values from each original data
+set into missing values to create incomplete data sets. For the numerical features,
+we use the data tool Rosetta (http://www.lcb.uu.se/tools/rosetta/index.php) to
+discretize them.
+
+Table 1. A description of six data sets
+
+Objects Features Classes
+
+Data sets
+Hepatitis
+
+Synthetic
+
+Soybean-large
+
+155
+307
+600
+Cardiotocography 2126
+5822
+8124
+
+Ticdate 2000
+Mushroom
+
+19
+35
+60
+21
+85
+22
+
+2
+19
+6
+3
+2
+2
+
+In what follows, we ﬁrst make a comparative study on the feature selection
+algorithms in terms of feature subset size. The results are shown in Table 2 in
+which PFS represents the proposed feature selection algorithm, EFS represents
+the feature selection algorithm constructed in [15] and LFS denotes the lower
+approximation-based feature selection algorithm in [13]. Note that PFS selects
+candidate features by Deﬁnition 4, while EFS ﬁnds candidate features by Deﬁ-
+nition 2. The main diﬀerence between PFS and EFS is the evaluation function.
+
+Table 2. Comparison of feature subset size by Algorithms PFS, EFS and LFS
+
+Data sets
+
+Hepatitis
+
+Soybean-large
+
+Synthetic
+
+Cardiotocography
+
+Ticdate 2000
+Mushroom
+
+Original feature set size Feature subset size
+LFS
+14
+10
+16
+12
+24
+5
+
+PFS
+12
+9
+13
+12
+24
+4
+
+EFS
+14
+11
+13
+13
+24
+5
+
+19
+35
+60
+21
+85
+22
+
+As shown in Table 2, we can observe that Algorithm PFS selects fewer fea-
+tures comparing with EFS and LFS in most data sets. For example, as data set
+Hepatitis, PFS selects 12 features, while both of EFS and LFS select 14 features.
+The reason can be attributed to that the total number of objects in the data sets
+keep invariant, the more objects can be discerned with the selected features by
+proposed evaluation function in PFS than that of EFS at certain iterations, such
+that fewer features needed to discern all the objects in the data sets by PFS.
+
+A New Evaluation Function for Entropy-Based Feature Selection
+
+105
+
+And it does shows that there is a decrease in feature subset size between PFS
+and LFS, demonstrating that there is other information contained in the entropy
+other than that in the lower approximation. This phenomenon indicates that the
+proposed feature selection algorithm can reduce data dimensions eﬀectively, thus
+it veriﬁes the validity of new evaluation function.
+
+We employ two classiﬁers NaiveBayes and J48 to evaluate the classiﬁcation
+performance of the selected feature subset. Each data set is divided into two
+parts: one for training and the other for test. On the basis of the training data,
+we employ feature selection algorithms to reduce the data sets. By NaiveBayes
+and J48, the rules are extracted from the training set. Using the rules the test set
+is classiﬁed and the classiﬁcation results are obtained. The average classiﬁcation
+accuracies and standard deviation are acquired based on tenfold cross-validation
+shown in Tables 3 and 4, where Raw depicts the classiﬁcation performance on
+data sets with the original features, and the average classiﬁcation accuracies are
+expressed in percentage. The “Average(ACC)” row records the average classiﬁ-
+cation accuracy of the three algorithms on six data sets.
+
+Table 3. Comparison of classiﬁcation accuracy for NaiveBayes Classiﬁer
+
+Data sets
+
+Hepatitis
+
+Soybean-large
+
+Synthetic
+
+Cardiotocography
+
+Ticdate 2000
+Mushroom
+
+Average(ACC)
+
+Raw
+
+84.07±0.99
+91.43±1.07
+95.58±2.20
+89.79±0.61
+76.04±1.14
+95.52±0.76
+
+88.73
+
+NaiveBayes Classiﬁer
+PFS
+EFS
+
+86.12±0.75
+92.50±1.12
+94.97±1.93
+91.85±0.40
+78.07±0.86
+98.19±0.58
+
+90.28
+
+85.30±0.61
+90.89±1.20
+94.97±1.93
+88.56±0.76
+77.58±1.39
+96.72±0.60
+
+89.00
+
+LFS
+
+85.28±0.73
+90.11±1.54
+92.06±1.87
+89.23±0.31
+76.90±2.15
+98.95±0.71
+
+88.76
+
+Table 4. Comparison of classiﬁcation accuracy for J48 Classiﬁer
+
+Data sets
+
+Hepatitis
+
+Soybean-large
+
+Synthetic
+
+Cardiotocography
+
+Ticdate 2000
+Mushroom
+
+Average (ACC)
+
+Raw
+
+79.35±1.16
+88.01±0.63
+84.51±1.02
+95.07±0.84
+79.55±0.91
+100.00±0.0
+
+87.74
+
+J48 Classiﬁer
+
+PFS
+
+84.60±1.09
+87.92±0.54
+89.40±0.66
+97.26±0.59
+81.70±1.37
+100.00±0.0
+
+90.15
+
+EFS
+
+82.32±1.25
+87.09±0.41
+89.40±0.66
+94.01±1.20
+79.34±1.44
+100.00±0.0
+
+88.69
+
+LFS
+
+80.81±1.74
+87.75±0.90
+86.03±0.82
+95.92±1.03
+82.15±1.58
+100.00±0.0
+
+88.78
+
+The results shown in Tables 3 and 4 indicate that PFS produces the better
+classiﬁcation performances after feature selection based on the new evaluation
+
+106
+
+W. Shu et al.
+
+function than those of EFS and LFS as to NaiveBayes and J48. Regarding Naive-
+Bayes, PFS is better than EFS on all the data sets other than data set Synthetic,
+and PFS also shows increases in classiﬁcation accuracies comparing with LFS.
+As to J48, PFS outperforms EFS on four of six data sets; PFS outperforms LFS
+on most of the data sets. Considering the results between PFS and EFS, it can
+demonstrate the eﬀectiveness of new evaluation function in feature selection. In
+addition, the three approaches improve the classiﬁcation capability by selecting
+a small portion of the original features. From the experimental results, we can
+conﬁrm that the proposed evaluation function leads to promising improvement
+on classiﬁcation performance.
+
+To further explain the reason why the classiﬁcation performances are improved
+using the new evaluation function, we conduct the experiments on four large
+data sets using NaiveBayes classiﬁer with Algorithms PFS, EFS and LFS. Fig.1
+displays more detailed change trend of the three algorithms in classiﬁcation
+accuracy with the number of selected features.
+
+Fig.1. Trends of accuracies by NaiveBayes with number of features
+
+From Fig.1, the curves between PFS and EFS in the data set Synthetic are
+overlapping. The reason is that PFS and EFS select the same features, thus the
+classiﬁcation accuracies are the same for selecting the same number of features.
+However, most points in the curves of PFS are higher than those of EFS and
+LFS in the data sets. Take data set Cardiotocography as an illustration, the
+classiﬁcation accuracies of PFS are higher than those of EFS and LFS since
+
+A New Evaluation Function for Entropy-Based Feature Selection
+
+107
+
+the beginning of selecting three features. The underlying reason perhaps is that
+though the number of features is the same by PFS and EFS, the selected fea-
+tures are diﬀerent, PFS employed the new evaluation function always ﬁnd the
+candidate features that can discern more objects for classiﬁcation learning, such
+that the classiﬁcation performance is better than that of EFS. The similar sit-
+uations can be found in two other data sets. Observing the curves, we can ﬁnd
+that PFS can keep a steady increase in accuracy value, whereas EFS and LFS
+incur a ﬂuctuant increase, even a decrease. This phenomenon may result from
+one possible reason that PFS has a redundancy-removing step, while EFS and
+LFS does not consider the redundant information between the selected features.
+It shows some dispensable features in the selected feature subset are superﬂuous,
+which deteriorate the classiﬁcation performance.
+
+Furthermore, we conduct the experiments on the four larger data sets using
+J48 classiﬁer with the three algorithms. Fig.2 displays more detailed change trend
+of the three algorithms in classiﬁcation accuracy with the number of selected
+features.
+
+Fig.2. Trends of accuracies by J48 with number of features
+
+As shown in Fig.2, the curves between PFS and EFS in the data set Synthetic
+are overlapping. However, one may observe that there are many points in the
+curves where the classiﬁcation performance of PFS clearly surpasses those of
+EFS and LFS. We can see that, as data set Mushroom, when the selected feature
+number is two, the classiﬁcation accuracy of PFS is higher than those of EFS
+
+108
+
+W. Shu et al.
+
+and LFS. Though the same number of selected features, PFS can select the
+feature that discerns more objects for classiﬁcation learning, correspondingly, the
+selected features are diﬀerent, and the classiﬁcation accuracy is higher than that
+of EFS. And comparing with LFS, PFS can ﬁnd some other useful information
+contained in the entropy other than lower approximation, which would result in
+better classiﬁcation performance. For the other three data sets, one may observe
+that the similar situations.
+
+Based on the aforementioned experimental results, we can conclude that the
+new evaluation function gives an eﬀective way to select satisfactory feature subset
+in the process of feature selection from incomplete data.
+
+5 Conclusions
+
+In this paper, we introduce a new evaluation function to overcome the draw-
+backs of existing evaluation functions. Based on the new evaluation function, we
+construct a conditional entropy-based feature selection algorithm with forward
+greedy search from incomplete data. The numerical experiments show the valid-
+ity of the new evaluation function. Two main conclusions are drawn as follows.
+On the one hand, compared with the existing evaluation function, the new eval-
+uation function reﬂects not only the conditional entropy values’ variation, but
+also the discernibility ability of a candidate feature. Thus the new evaluation
+function is more reasonable than the existing evaluation function to describe the
+discernibility ability. On the other hand, in feature selection, even if there are
+more features with same importance in the conditional entropy, our feature se-
+lection algorithm can select one with the greatest classiﬁcation ability, while the
+arbitrary selection in the existing feature selection algorithm may aﬀect the clas-
+siﬁcation performance. Therefore, the new evaluation function is more eﬀective
+in the process of feature selection from incomplete data.
+
+Acknowledgments. This work was supported in part by the Natural Science
+Foundation of China (61170232), Fundamental Research Funds for the Central
+Universities (2012JBZ0 17), Independent research project of State Key Labora-
+tory of Rail Traﬃc Control and Safety (RCS2012ZT011), Innovation Funds of
+Excellence Doctor of Beijing Jiaotong University (2014YJS040) and Research
+Initiative Grant of Sun Yat-sen University. The corresponding author is Hong
+Shen.
+
+References
+
+1. Kohavi, R., John, G.H.: Wrappers for feature subset selection. Artiﬁcial Intelli-
+
+gence 97, 273–324 (1997)
+
+2. Qu, G., Hariri, S., Yousif, M.: A new dependency and correlation analysis for
+features. IEEE Transactions on Knowledge and Data Engineering 17(9), 1199–1207
+(2005)
+
+A New Evaluation Function for Entropy-Based Feature Selection
+
+109
+
+3. Liang, J., Yang, S., Winstanley, A.: Invariant optimal feature selection: A dis-
+tance discriminant and feature ranking based solution. Pattern Recognition 41(5),
+1429–1439 (2008)
+
+4. Dash, M., Liu, H.: Feature selection for classiﬁcation. Intelligent Data Analy-
+
+sis 1(3), 131–156 (1997)
+
+5. Steppe, J.M., Bauer, K.W., Rogers, S.K.: Integrated feature and architecture
+
+selection. IEEE Transactions on Neural Networks 7(4), 1007–1014 (1996)
+
+6. Pawlak, Z., Skowron, A.: Rough sets and Boolean reasoning. Information Sci-
+
+ences 177(1), 41–73 (2007)
+
+7. Xue, B., Cervante, L., et al.: A multi-objective particle swarm optimisation
+for ﬁlter-based feature selection in classiﬁcation problems. Connection Science
+24(2-3), 91–116 (2012)
+
+8. Cervante, L., Xue, B., Shang, L., Zhang, M.J.: Binary particle swarm optimisation
+and rough set theory for dimension reduction in classiﬁcation. In: IEEE Congress
+on Evolutionary Computation (CEC), pp. 2428–2435 (2013)
+
+9. Sebban, M., Nock, R.: A hybrid ﬁlter / wrapper approach of feature selection using
+
+information theory. Pattern Recognition 35(4), 835–846 (2002)
+
+10. Farahat, A.K., Ghodsi, A., Kamel, M.S.: An eﬃcient greedy method for unsu-
+pervised feature selection. In: The 11th IEEE International Conference on Data
+Mining (ICDM), pp. 161–170 (2011)
+
+11. Hu, Q.-H., Zhao, H., Xie, Z.-X., Yu, D.-R.: Consistency based attribute reduction.
+In: Zhou, Z.-H., Li, H., Yang, Q. (eds.) PAKDD 2007. LNCS (LNAI), vol. 4426,
+pp. 96–107. Springer, Heidelberg (2007)
+
+12. Sun, L., Xu, J.C., Tian, Y.: Feature selection using rough entropy-based uncertainty
+measures in incomplete decision systems. Knowledge-Based Systems 36, 206–216
+(2012)
+
+13. Qian, Y.H., Liang, J.Y., Pedrycz, W., Dang, C.Y.: An eﬃcient accelerator for
+attribute reduction from incomplete data in rough set framework. Pattern Recog-
+nition 44, 1658–1670 (2011)
+
+14. Slezak, D.: Approximate entropy reducts. Fundamenta Informaticae 53, 365–390
+
+(2002)
+
+15. Dai, J.H., Wang, W.T., Xu, Q.: An uncertainty measure for incomplete decision
+tables and its applications. IEEE Transactions on Cybernetics 43(4), 1277–1289
+(2013)
+
+16. UCI Machine Learning Repository, http://www.ics.uci.edu/mlearn/
+
+MLRepository.html
+
+

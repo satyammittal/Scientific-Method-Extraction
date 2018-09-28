@@ -1,0 +1,1508 @@
+A Novel Framework to Improve
+
+siRNA Eﬃcacy Prediction
+
+Bui Thang Ngoc
+
+Japan Advanced Institute of Science and Technology
+1-1 Asahidai, Nomi City, Ishikawa, 923-1211 Japan
+
+thangbn@jaist.ac.jp
+
+Abstract. Short interfering RNA sequences (siRNAs) can knockdown
+target genes and thus have an immense impact on biology and pharmacy
+research. The key question of which siRNAs have high knockdown ability
+in siRNA research remains challenging as current known results are still
+far from expectation. This work aims to develop a generic framework to
+enhance siRNA knockdown eﬃcacy prediction. The key idea is ﬁrst to
+enrich siRNA sequences by incorporating them with rules found for de-
+signing eﬀective siRNAs and representing them as transformed matrices,
+then to employ the bilinear tensor regression to do prediction on those
+matrices. Experiments show that the proposed method achieves results
+better than existing models in most cases.
+
+1
+
+Introduction
+
+In 2006, Fire and Mello received their Nobel Prize for their contributions to
+research on RNA interference (RNAi) that is the biological process in which
+RNA molecules inhibit gene expression, typically by causing the destruction of
+speciﬁc mRNA molecules. Their work and that of others on discovery of RNAi
+have had an immense impact on biomedical research and will most likely lead
+to novel medical applications. On RNAi research, designing of siRNAs (short
+interfering RNAs) with high eﬃcacy is one of the most crucial RNAi issues.
+Highly eﬀective siRNAs can be used to design drugs for viral-mediated diseases
+such as Inﬂuenza A virus, HIV, Hepatitis B virus, RSV viruses, cancer disease
+and so on. As a result, siRNA silencing is considered one of the most promising
+techniques in future therapy. Finding highly eﬀective siRNAs among thousands
+of potential siRNAs for an mRNA remains a great challenge.
+
+Various siRNA design rules have been found by empirical processes since 1998.
+The ﬁrst rational siRNA design rule was detected by Elibalshir et al. [2]. They
+suggested that siRNAs having 19–21 nt (nucleotide) in length with 2 nt over-
+hangs at 3’ end can eﬃciently silence mRNAs. Scherer et al. reported that the
+thermodynamic properties (G/C content of siRNA) to target speciﬁc mRNAs
+are important characteristics [11]. Soon after these works, many rational design
+rules for eﬀective siRNAs have been found, typically those in [10], [15], [1], [4],
+[7], [14]. For example, Reynolds et al. [10] analyzed 180 siRNAs and found eight
+criteria for improving siRNA selection: (1) G/C content 30−52%, (2) at least 3
+
+V.S. Tseng et al. (Eds.): PAKDD 2014, Part II, LNAI 8444, pp. 400–412, 2014.
+c(cid:2) Springer International Publishing Switzerland 2014
+
+A Novel Framework to Improve siRNA Eﬃcacy Prediction
+
+401
+
+As or Us at positions from 15 to 19, (3) absence of internal repeats, (4) an A at
+position 19, (5) an A at position 3, (6) a U at position 10, (7) a base other than
+G or C at position 19, (8) a base other than G at position 13.
+
+However, most of siRNA design tools using the above-mentioned design rules
+have low accuracy, because about 65% of the siRNAs predicted as high eﬀective
+was failed when tested experimentally as they were 90% in inhibition and near
+20% of them were found to be inactive [9]. One reason is the previous empirical
+analyses only based on small datasets and focused on speciﬁc genes. Therefore,
+each of these rules certainly is poor to individually design eﬀective siRNAs.
+
+Since nearly a decade, machine learning techniques have alternatively been
+applied to predict knockdown eﬃcacy of siRNAs. The ﬁrst predictive model was
+proposed by Huesken et al. in which motifs for eﬀective and ineﬀective siRNA se-
+quences were detected basing on the signiﬁcance of nucleotides by using a neural
+network to train 2,182 scoring siRNAs (scores are real numbers in [0, 1], the high
+score the higher knockdown eﬃcacy) and test on 249 siRNAs [5]. This data set
+was consequently used to build other predictive models [6], [13], [16]. Recently,
+Qui et al. used multiple support vector regression with RNA string kernel for
+siRNA eﬃcacy prediction [8], and Sciabola et al. applied three dimension struc-
+tural information of siRNA to increase predictability of the regression model [12].
+However, most of those methods suﬀer from some drawbacks. Their correlations
+between predicted values and experimental values of dependent variable ranging
+from 0.60 to 0.68 were considerably decreased when testing on independent data
+sets. It may be caused by the fact that the Huesken dataset may not be repre-
+sentative of the siRNA population having about 419 siRNAs and the sample size
+is small. Besides the scoring siRNA dataset, the labelled siRNA datasets, e.g.
+siRecord database [9] with labels such as ‘very high”, ‘high’, ‘medium’, ‘low’ for
+the knockdown ability were also exploited by classiﬁcation methods.
+
+Our work aims to develop a novel framework for better prediction of the
+siRNA knockdown ability. The key idea is not only focusing on learning algo-
+rithms but also exploiting results of the empirical process to enrich the data. To
+this end, we ﬁrst learn transformation matrices by incorporating existing siRNA
+design rules with labelled siRNAs in siRecord database. We then use the trans-
+formation matrices to enrich scoring siRNAs as transformed matrices and do
+prediction with them by bilinear tensor regression where the Frobenius norm is
+appropriately replaced by L2 regularization norm for an eﬀective computation.
+Experiments show that the proposed method achieves results better than most
+existing models. The contributions of this work are summarized as follows
+
+1. A novel generic framework to predict siRNA eﬃcacy by enriching siRNA
+sequences with domain knowledge and appropriately using bilinear tensor
+regression.
+
+2. An optimization method to enrich siRNAs using siRNA design rules found
+
+by empirical works.
+
+3. The use of L2 norm instead of Frobenius norm in bilinear tensor regression
+
+that allows eﬀectively learning the set of model parameters.
+
+402
+
+B.T. Ngoc
+
+2 The Framework to Improve siRNA Eﬃcacy Prediction
+
+The problem of siRNA knockdown eﬃcacy prediction using siRNA design rules
+is formulated as follows:
+
+– Given: Two sets of labelled siRNA and scoring siRNA sequences of length n,
+
+and a set of K siRNA design rules.
+
+– Find: A function that assigns a right score to a given siRNA.
+
+The proposed framework consists of four steps in two phases. The ﬁrst phase
+is to encode siRNAs and learn transformation matrices. The second phase is
+to use transformation matrices to enrich siRNAs as transformed matrices and
+learn model parameters of the bilinear tensor regression to predict the score of
+siRNAs using transformed matrices. The steps of the framework are summarized
+in Table 1.
+
+Table 1. Framework for siRNA knockdown eﬃcacy prediction
+
+1. To encode each siRNA sequence as an encoding matrix X representing the nu-
+cleotides A, C, G, and U at n positions in the sequence. Thus, siRNA sequences
+are represented as n × 4 encoding matrices.
+
+2. To learn transformation matrices Tk, k = 1, ..., K, each characterizes the knock-
+down ability of nucleotides A, C, G, and U at n positions in the siRNA sequence
+regarding the kth design rule. Each Tk is learned from the set of labelled siRNAs
+and the kth design rule. This incorporation of each design rule with siRNAs leads
+to solve a newly formulated optimization problem.
+3. To transform siRNA (encoding matrices) to transformed matrices by K transfor-
+mation matrices. The transformed matrices of size K × n are considered as second
+order tensor representations of the siRNA sequences.
+
+4. To build a bilinear tensor regression model that uses transformed matrices of scor-
+
+ing siRNAs to predict the knockdown ability of new siRNAs.
+
+2.1 Encoding siRNA and Transformation Matrix Learning
+
+Step 1 of the framework can be easily done where each siRNA sequence with n
+nucleotides in length is encoded as a binary encoding matrix of size n × 4. In
+fact, four nucleotides A, C, G, or U are encoded by encoding vectors (1,0,0,0),
+(0,1,0,0), (0,0,1,0) and (0,0,0,1), respectively. If a nucleotide from A, C, G, and
+U appears at the jth position in a siRNA sequence, j = 1, ..., n, its encoding
+vector will be used to encode the jth row of the encoding matrix.
+
+Step 2 is to learn transformation matrices Tk regarding the kth design rule,
+k = 1, ..., K. Tk has size of 4 × n where the rows correspond to nucleotides A,
+C, G, and U and the columns correspond to n positions on sequences. Tk are
+learned one by one from the set of siRNAs and the kth design rule, thus we
+use T instead of Tk for simpliﬁcation. Each cell T [i, j], i = 1, ..., 4, j = 1, ..., n,
+represents the knockdown ability of nucleotide i at position j regarding the kth
+
+A Novel Framework to Improve siRNA Eﬃcacy Prediction
+
+403
+
+Fig. 1. The left table shows an example of encoding matrix, transformation matrix, and
+transformed vector (the values 0.5, 0.1 etc. are taken to the transformed vector). The
+right table is an example of incorporating the condition of a design rule at position 19
+to a transformation matrix T by designing constraints.
+
+design rule. Each cell T [i, j] to be learned have to satisfy a number of constraints.
+First, they are basic and normalization constraints on elements of T
+
+T [i, j] ≥ 0,
+i = 1, ..., 4;
+i=1 T [i, j] = 1, j = 1, . . . , n
+
+(cid:2)4
+
+j = 1, 2, . . . , n
+
+(1)
+
+(2)
+
+The second kind of constraints related to design rules. Each design rule propo-
+sitionally describes the occurrence or absence of nucleotides at diﬀerent positions
+of eﬀective siRNA sequences. Therefore, if a design rule shows the occurrence
+(absence) of some nucleotides on jth position, then their corresponding values
+in the matrix T would be greater (smaller) than other values at column j. For
+example, the design rule in the right table in Figure 1 illustrates that at posi-
+tion 19, nucleotides A/U are eﬀective and nucleotide C is ineﬀective. It means
+that knockdown ability of nucleotides A/U are bigger than that of nucleotides
+G/C and knockdown ability of nucleotide C is smaller than that of the other
+nucleotides. Thus, values T [1, 19], T [2, 19], T [3, 19] and T [4, 19] show the knock-
+down ability of nucleotides A, C, G and U at position 19, respectively. Therefore,
+ﬁve constraints at column 19 of T are formed. Generally, we denote the set of R
+trick inequality constraints on T by the design rule under consideration by
+
+{gr(T ) < 0}R
+
+r=1
+
+(3)
+
+The third kind of constraints relating to preservation of the siRNA classes after
+being transformed by using transformation matrices Tk, it means that siRNAs
+belonging to the same class should be more similar to each other than siRNAs
+belonging to the other class.
+
+Let vector xl of size 1 × n denote the transformed vector of the lth siRNA
+sequence using the transformation matrix T . The jth element of xl is the element
+of T at column j and the row corresponds to the jth nucleotide in the siRNA
+sequence. To compute xl, new column-wise inner product is deﬁned as follows
+
+xl = T ◦ Xl = ((cid:4)Xl[1, .], T [., 1](cid:5), (cid:4)Xl[2, .], T [., 2](cid:5), . . . ,(cid:4)Xl[n, .], T [., n](cid:5))
+
+(4)
+
+404
+
+B.T. Ngoc
+
+where Xl[j, .] and T [., j] are the jth row vector and the jth column of the matrix
+Xl and T , respectively, and (cid:2)x, y(cid:3) denotes the inner product of vectors x and y.
+
+The left table in Figure 1 shows an example of encoding matrix X, trans-
+formation matrix T and transformed vector x of the given sequence AUGCU.
+The rows of X represent encoding vectors of nucleotides in the sequence. Given
+transformation matrix T of size 4 × 5. The sequence AUGCU is represented by
+the vector x = (T [1, 1], T [4, 1], T [3, 3], T [2, 4], T [4, 5]) = (0.5, 0.1, 0.08, 0.6, 0.1).
+Therefore, transformed data can be computed by the column-wise inner product
+x = T ◦ X.
+
+The problem of transformation matrix learning is now formulated as ﬁnding T
+under constraints (1), (2) and (3) so that the similarity of transformed vectors xl
+in the same class is minimum and the dissimilarity of xl in diﬀerent classes is
+maximum. The learning problem then leads to solve the optimization problem
+with the following objective function
+
+(cid:3)
+
+M in
+
+p,q∈N1
+
+2
+
+d
+
+(xp, xq) +
+
+(cid:3)
+
+p,q∈N2
+
+2
+
+d
+
+(xp, xq) − (cid:3)
+p∈N1
+q∈N2
+
+2
+
+d
+
+(xp, xq)
+
+(5)
+
+Subject to
+
+(cid:2)
+
+4
+i=1 T [i, j] = 1, gr(T ) < 0, i = 1, ..., 4; j = 1, ..., n; r = 1, .., R.
+
+T [i, j] ≥ 0,
+In the objective function, the two ﬁrst components are the sum of similarity
+of sequence pairs belonging to the same class and the last one is similarity of
+sequence pairs belonging to two diﬀerent classes; d(x, y) is the similarity measure
+between x and y (in this work we use Euclidean distance and L2 norm); N1
+and N2 are the two index sets of high and low eﬃcacy siRNAs, respectively.
+Constraints gi(T ) can also help to avoid the trivial solution of the objective
+function.
+
+This optimization problem is solved by the following Lagrangian form
+
+E =
+
+(cid:2)
+
+p,q∈N1
+
+2
+
+d
+
+(cid:2)
+
+p∈N1
+q∈N1
+(cid:2)
+
+=
+
+=
+
+n(cid:2)
+
+j=1
+(cid:3)
+
+p,q∈N1
+n(cid:2)
+
++
+
+λj
+
+(xp, xq) +
+
+2
+
+d
+
+(cid:2)
+
+p,q∈N2
+
+(xp, xq) − (cid:2)
+p∈N1
+q∈N2
+2 − (cid:2)
+p∈N1
+q∈N2
+((cid:4)Xp[j, .], T [., j](cid:5) − (cid:4)Xq[j, .], T [., j](cid:5))
+
+(cid:3) xp − xq (cid:3)2
+
+p∈N2
+q∈N2
+
+(cid:2)
+
+(cid:3) xp − xq (cid:3)2
+
+2 +
+
+n(cid:2)
+
+(xp, xq) +
+
+λj
+
+2
+
+d
+
+4(cid:2)
+
+T [i, j] − 1
+
+R(cid:2)
+
++
+
+μrgr(T )
+
+(cid:3)
+
+(cid:4)
+
+j=1
+
+i=1
+
+(cid:3) xp − xq (cid:3)2
+
+2 +
+
+n(cid:2)
+
+λj
+
+(cid:3)
+
+4(cid:2)
+
+r=1
+(cid:4)
+
+R(cid:2)
+
+T [i, j] − 1
+
++
+
+μrgr(T )
+
+j=1
+
+i=1
+
+r=1
+
+(cid:2)
+
+n(cid:2)
+
++
+
+p,q∈N2
+
+j=1
+
+((cid:4)Xp[j, .], T [., j](cid:5) − (cid:4)Xq[j, .], T [., j](cid:5))
+
+2
+
+2
+
+(cid:4)
+
+4(cid:2)
+
+T [i, j] − 1
+
+j=1
+
+i=1
+
++
+
+R(cid:2)
+
+r=1
+
+μrgr(T ) − (cid:2)
+p∈N1
+q∈N2
+
+n(cid:2)
+
+j=1
+
+((cid:4)Xp[j, .], T [., j](cid:5) − (cid:4)Xq[j, .], T [., j](cid:5))
+
+2
+
+where μr, r = 1, ..., R and λj , j = 1, . . . , n are Lagrangian multipliers. To solve
+the minimization problem, an iterative method is applied. For each pair of (i, j),
+T [i, j] is solved while keeping the other elements of T . The Karush-Kuhn-Tucker
+conditions are
+
+– Stationarity:
+– Primal feasibility: T [i, j] ≥ 0,
+
+∂E
+
+∂T [i,j] = 0, i = 1, ..., 4 and j = 1, . . . , n.
+
+(cid:2)
+4
+i=1 T [i, j] = 1, gr(T ) < 0, i = 1, ..., 4;
+
+j = 1, ..., n; r = 1, ..., R.
+
+A Novel Framework to Improve siRNA Eﬃcacy Prediction
+
+405
+
+– Dual feasibility: μr ≥ 0, r = 1, . . . , R.
+– Complementary slackness: μrgr(T ) = 0, r = 1, . . . , R.
+
+From the last three conditions, we have μr = 0, r = 1, . . . , R. Therefore, the
+
+stationarity condition can be derived as follows
+
+∂E
+
+∂T [i, j]
+
+= 2
+
+(cid:3)
+
+p,q∈N1
+(cid:3)
+
++2
+−2
+
+p,q∈N2
+(cid:3)
+
+((cid:4)Xp[j, .], T [., j](cid:5) − (cid:4)Xq[j, .], T [., j](cid:5))(Xp[j, i] − Xq[j, i])
+((cid:4)Xp[j, .], T [., j](cid:5) − (cid:4)Xq[j, .], T [., j](cid:5))(Xp[j, i] − Xq[j, i])
+
+((cid:4)Xp[j, .], T [., j](cid:5) − (cid:4)Xq[j, .], T [., j](cid:5))(Xp[j, i] − Xq[j, i]) + λj = 0
+Set Zp,q = (Xp − Xq)T and Aij is the vector resulting from the column j of
+
+p∈N1,q∈N2
+
+matrix A by removing the element A[i, j]. Therefore, the above formulation is
+derived as follows
+
+∂E
+
+∂T [i, j]
+
+= 2(
+
+(cid:3)
+
+(cid:4)(Zp,q)ij, Tij(cid:5)Zp,q[i, j] +
+
+(cid:4)(Zp,q)ij, Tij(cid:5)Zp,q[i, j]
+
+(cid:3)
+
+p,q∈N2
+
+p,q∈N1
+− (cid:3)
+
+p∈N1,q∈N2
+(cid:4)
+
+(cid:4)(Zp,q)ij , Tij(cid:5)Zp,q[i, j])
+
+(cid:3)
+
++2T [i, j]
+
+p,q∈N1
+
+2
+p,q[i, j] +
+
+Z
+
+(cid:3)
+
+p,q∈N2
+
+p,q[i, j] − (cid:3)
+
+2
+
+Z
+
+p∈N1,q∈N2
+
+(cid:5)
+
+2
+p,q[i, j]
+
+Z
+
++ λj = 0
+
+We deﬁne the following equations
+
+S(i, j) =
+
+2
+p,q[i, j] +
+
+Z
+
+(cid:3)
+
+p,q∈N2
+
+(cid:3)
+
+p,q∈N1
+(cid:3)
+
+B(i, j) =
+
+(cid:4)(Zp,q)ij , Tij(cid:5)Zp,q[i, j] +
+
+p,q[i, j] − (cid:3)
+
+2
+
+Z
+
+2
+p,q[i, j]
+
+Z
+
+p∈N1,q∈N2
+(cid:4)(Zp,q)ij , Tij(cid:5)Zp,q[i, j]
+
+(cid:3)
+
+p,q∈N2
+
+p,q∈N1
+− (cid:3)
+p∈N1,q∈N2
+
+(cid:4)(Zp,q)ij , Tij(cid:5)Zp,q[i, j].
+
+Substitute (6) and (7) to
+
+∂E
+
+∂T [i,j] , we have
+
+T [i, j] =
+
+−λj
+2
+
+− B(i, j)
+S(i, j)
+
+(6)
+
+(7)
+
+(8)
+
+At a column j, T has to satisfy
+−λj
+2
+
+i1=1 T (i1, j) = 1 ⇔ 4(cid:3)
+(cid:2)4
+
+i1=1
+
+− B(i1, j)
+S(i1, j)
+
+= 1 ⇒ −λj
+
+2
+
+=
+
+(cid:2)4
+
+1 +
+
+(cid:2)4
+
+i1=1
+
+B(i1,j)
+S(i1,j)
+1
+
+(9)
+
+i1=1
+
+S(i1,j)
+
+Substitute (9) to (8), equation (8) can be derived as
+
+1+
+
+(cid:5)4
+(cid:5)4
+
+i1=1
+
+i1=1
+
+B(i1 ,j)
+S(i1 ,j)
+
+1
+
+S(i1,j)
+S(i,j)
+
+T [i, j] =
+
+−B(i,j)
+
+1+
+
+=
+
+(cid:5)
+
+B(i1 ,j)−B(i,j)
+
+i1(cid:3)=i
+(cid:5)
+
+4
+i1 =1
+
+S(i1 ,j)
+S(i,j)
+S(i1 ,j)
+
+(10)
+
+406
+
+B.T. Ngoc
+
+In this task, K design rules are used to learn K transformation matrices.
+The main steps are summarized in Algorithm 1. For each siRNA design rule,
+the algorithm will update each element of the transformation matrix according
+to equation (10). In each iterative step, the transformation matrix without trick
+inequality constraints is updated to reach the global optimal solution. If updated
+elements in a column satisfy the trick inequality constraints characterizing the
+condition at the corresponding position of the rule, that column will be updated
+to the target solution. The transformation matrix is updated until meeting the
+
+convergence criteria. (cid:6) . (cid:6)F ro is the Frobenious norm of a matrix.
+
+Algorithm 1. Transformation matrices learning
+
+Input: A data set S = {(sl, yl)}N
+labels, a set DR of K design rules, the length n of siRNA sequences.
+Output: K transformation matrices T1, T2, . . . , TK .
+Encoding siRNA sequences in S.
+for rulek in DR do
+
+1 where sl are siRNA sequences and yl are their
+
+Form the set of constraints Ck based on rulek
+Initialize the transformation matrix Tk satisfying Ck.
+t = 0 { Iterative step}
+repeat
+
+t ← t + 1
+for j = 1 to n do
+
+(t−1)
+k
+
+[., j] { A temporary vector}
+
+v = T
+for i = 1 to 4 do
+
+Compute v[i] using equation (10)
+
+end for
+if (v satisﬁes the constraints at the position j in Ck) then
+
+(t)
+
+k [., j] ← v
+
+T
+
+end if
+end for
+(cid:3)T (t)
+k
+
+until (
+
+−T (t−1)
+
+(cid:3)F ro
+
+k
+
+(cid:3)T (t−1)
+
+k
+
+(cid:3)F ro
+
+≤ ) or (t > tM ax)
+
+end for
+
+2.2 Tensor Regression Model Learning
+
+Given a siRNA data set D = {(sl, yl)}N
+1 where sl is the lth siRNA sequence
+of size n and yl ∈ R is the knockdown eﬃcacy score of sl. Let Xl denotes the
+encoding matrix of sl. Each encoding matrix X is transformed to K represen-
+tations by K transformation matrices, (T1 ◦ X, T2 ◦ X, . . . , TK ◦ X). R(X) =
+(T1 ◦ X, T2 ◦ X, . . . , TK ◦ X)T denotes the second order tensor of size K × n.
+
+The regression model can be deﬁned as the following bilinear form
+
+f (x) = αR(X)β
+
+(11)
+
+where α = (α1, α2, . . . , αK) is a weight vector of the K representations of X and
+β = (β1, β2, . . . , βn)T is a parameter vector of the model, and αR(X) component
+is the linear combination of representations T1 ◦ X, T2 ◦ X, . . . , TK ◦ X. It also
+
+A Novel Framework to Improve siRNA Eﬃcacy Prediction
+
+407
+
+shows the relationship among elements on each column of the second order tensor
+
+or each dimension of Tk ◦ X, k = 1, 2, . . . , K. Equation (11) can be derived as
+
+follows
+
+f (X) = αR(X)β =
+
+(cid:6)
+
+β ⊗ α
+
+T
+
+(cid:7)T
+
+vec(R(X)) =
+
+(cid:6)
+
+(cid:7)
+T ⊗ α
+
+β
+
+vec(R(X))
+
+(12)
+
+where A ⊗ B is the Kronecker product of two matrices A and B, and vec(A) is
+the vectorization of matrix A. The weight vector α and the parameter vector β
+are learned by minimizing the following regularized risk function
+
+L(α, β) =
+
+N(cid:3)
+
+l=1
+
+(yl − αR(Xl)β)
+
+2
+
++ λ (cid:11) β
+
+T ⊗ α (cid:11)2
+
+F ro
+
+(13)
+
+where λ is the turning parameter to tradeoﬀ between bias and variance, and
+
+(cid:6) βT ⊗ α (cid:6)F ro is the Frobenius norm of the ﬁrst order tensor βT ⊗ α. L(α, β)
+
+can be derived as follows
+
+L(α, β) =
+
+(yl − αR(Xl)β)
+
+2
+
++ λ
+
+(αkβj)
+
+=
+
+N(cid:2)
+N(cid:2)
+
+l=1
+
+=
+
+l=1
+
+N(cid:2)
+
+l=1
+
+(yl − αR(Xl)β)
+
+2
+
++ λ
+
+K(cid:2)
+
+n(cid:2)
+
+2
+j
+
+β
+
+2
+k
+
+α
+
+k=1
+
+j=1
+
+n(cid:2)
+
+j=1
+
+K(cid:2)
+K(cid:2)
+
+k=1
+
+α
+
+k=1
+
+2
+
+N(cid:2)
+
+l=1
+
+(yl − αR(Xl)β)
+
+2
+
++ λ
+
+2
+
+k (cid:11) β (cid:11)2
+2=
+
+(yl − αR(Xl)β)
+
+2
+
++ λ (cid:11) α (cid:11)2
+
+2(cid:11) β (cid:11)2
+
+2 (14)
+
+The risk function with Frobenius norm is converted to equation (14) with
+L2 norm. In order to solve this optimization problem, an alternative iteration
+method is used. At each iteration, the parameter vector β is eﬀectively solved
+by keeping the weight vector α and vice versa.
+(yl − αR(Xl)β) (R(Xl)β)
+
++ 2λα (cid:11) β (cid:11)2
+
+∂α = −2
+
+2= 0
+
+∂L(α,β)
+
+N(cid:3)
+
+T
+
+⇔
+
+N(cid:3)
+
+l=1
+
+l=1
+
+α (R(Xl)β) (R(Xl)β)
+
+⇒ α =
+
+N(cid:3)
+
+l=1
+
+yl (R(Xl)β)
+
+T
+
+(cid:4)
+
+N(cid:3)
+
+l=1
+
+T − N(cid:3)
+
+l=1
+
+yl (R(Xl)β)
+
+T
+
++ λα (cid:11) β (cid:11)2
+(cid:5)−1
+
+2= 0
+
+(R(Xl)β) (R(Xl)β)
+
+T
+
++ λ (cid:11) β (cid:11)2
+2 I
+
+(15)
+
+(yl − αR(Xl)β) (αR(Xl))
+
+T
+
++ 2λβ (cid:11) α (cid:11)2
+
+2= 0
+
+T − N(cid:3)
+
+yl (αR(Xl))
+
+T
+
++ λβ (cid:11) α (cid:11)2
+
+2= 0
+
+∂L(α,β)
+
+∂β = −2
+
+N(cid:3)
+
+l=1
+
+N(cid:3)
+
+⇔
+
+⇔
+
+αR(Xl)β (αR(Xl))
+
+l=1
+N(cid:3)
+
+(cid:6)
+
+l=1
+(cid:7)
+
+T ⊗ (αR(Xl))
+
+(αR(Xl))
+
+⇒ β =
+
+(αR(Xl))
+
+T ⊗ (αR(Xl))
+
+(cid:7)
+
++ λ (cid:11) α (cid:11)2
+2 I
+
+l=1
+(cid:4)
+
+N(cid:3)
+
+(cid:6)
+
+l=1
+
+β − N(cid:3)
+
+l=1
+
+yl (αR(Xl))
+
+T
+
++ λβ (cid:11) α (cid:11)2
+
+2= 0
+
+(cid:5)−1 N(cid:3)
+
+l=1
+
+T
+yl (αR(Xl))
+
+(16)
+
+408
+
+B.T. Ngoc
+
+Our proposed tensor regression model learning is summarized in Algorithm 2.
+In this algorithm, siRNA sequences are ﬁrstly represented as encoding matrices.
+The encoding matrices are then transformed to tensors by using K transforma-
+tion matrices. After that, the weight vector α and the coeﬃcient vector β are
+updated until meeting the convergence criteria, where tMax denotes the maxi-
+mum iterative step to update α and β, and 1 and 2 are thresholds for vectors
+α and β.
+
+Algorithm 2. Tensor Regression Model Learning
+
+Input: A data set S = {(si, yi)}N
+K transformation matrices R1, R2, . . . , Rk, and the length n of siRNA sequence.
+Output: Weight vector α = (α1, α2, . . . , αk) and parameter vector
+β = (β1, β2, . . . , βn) that minimize the regularized risk function
+
+1 where si are scoring siRNA sequences and yi ∈ R.
+
+– Represent siRNA sequences in S as enconding matrices.
+– Transform encoding matrices to tensors using K transformation matrices.
+– Initialize α and β randomly.
+– t = 0 { Iterative step}
+t ← t + 1
+Compute α(t) using equation (15)
+Compute β(t) using equation (16)
+
+repeat
+
+until ((
+
+(cid:3)α(t)−α(t−1)(cid:3)2
+
+(cid:3)α(t−1)(cid:3)2
+
+≤ 1) and (
+
+(cid:3)β(t)−β(t−1)(cid:3)2
+
+(cid:3)β(t−1)(cid:3)2
+
+≤ 2)) or (t > tM ax)
+
+3 Experimental Evaluation
+
+This section presents experimental evaluation in comparing the proposed method
+TRM (stands for ‘tensor regression model’) with the most recent reported meth-
+ods for siRNA knockdown eﬃcacy prediction on commonly used datasets. Dis-
+cussion on the framework and methods will follow the experiment report.
+Comparative Evaluation. The comparison is carried out using four data sets
+
+– The Huesken dataset of 2431 siRNA sequences targeting 34 human and ro-
+dent mRNAs, commonly divided into the training set HU train of 2182 siR-
+NAs and the testing set HU test of 249 siRNAs [5].
+
+– The Reynolds dataset of 240 siRNAs [10].
+– The Vicker dataset of 76 siRNA sequences targeting two genes [17].
+– The Harborth dataset of 44 siRNA sequences targeting one gene [3].
+
+TRM is compared to most state-of-the-art methods for siRNA knockdown
+eﬃcacy prediction recently reported in the literature. As experiments in those
+methods cannot be repeated directly, we employed the results reported in the
+literature and carried out experiments on TRM in the same conditions of the
+other works. Concretely, the comparative evaluation is done as follows
+
+1. Comparison of TRM with Multiple Kernel Support Vector Machine proposed
+by Qui et al. [8]. The author of [8] reported their Pearson correlation coeﬃ-
+cient (R) of 0.62 obtained by 10-fold cross validation on the whole Huesken
+
+A Novel Framework to Improve siRNA Eﬃcacy Prediction
+
+409
+
+Table 2. The R values of 18 models and TRM on three independent data sets
+
+Algorithm
+
+RReynolds
+(244si/7g)
+GPboot
+0.55
+Uitei
+0.47
+Amarzguioui 0.45
+0.03
+Hsieh
+0.03
+Takasaki
+Reynolds 1
+0.35
+0.37
+Reynolds 2
+0.29
+Schawarz
+Khvorova
+0.15
+
+RV icker
+(76si/2g)
+0.35
+0.58
+0.47
+0.15
+0.25
+0.47
+0.44
+0.35
+0.19
+
+RHarborth
+(44si/1g)
+0.43
+0.31
+0.34
+0.17
+0.01
+0.23
+0.23
+0.01
+0.11
+
+Algorithm
+
+RReynolds
+(244si/7g)
+
+Stockholm 1 0.05
+Stockholm 2 0.00
+0.11
+Tree
+0.33
+Luo
+0.54
+i-score
+Biopredsi
+0.53
+0.54
+DSIR
+0.40
+Katoh
+0.54
+SVM
+TRM
+0.60
+
+RV icker
+(76si/2g)
+0.18
+0.15
+0.43
+0.27
+0.58
+0.57
+0.49
+0.43
+0.52
+0.58
+
+RHarborth
+(44si/1g)
+0.28
+0.41
+0.06
+0.40
+0.43
+0.51
+0.51
+0.44
+0.54
+0.55
+
+dataset. The Pearson correlation coeﬃcient (R) is carefully evaluated by
+TRM by 10 times of 10-fold cross validation with the average value of 0.64.
+
+2. Comparison of TRM with four state-of-the-art methods of BIOPREDsi [5],
+DSIR [16], Thermocomposition21 [13], SVM [12] by HU train and HU test.
+The Pearson correlation coeﬃcients of the four models BIOPREDsi, DSIR,
+Thermocomposition21 and SVM are 0.66, 0.67, 0.66 and 0.80, respectively.
+The performance of TRM estimated on HU test is 0.68 that is slightly higher
+than that of the ﬁrst three models but lower than that of the last model.
+
+3. Comparison of TRM with 18 methods including BIOPREDsi, DSIR, Ther-
+mocomposition21, SVM when training on HU train and testing on three
+independent datasets of Reynolds, Vicker and Harborth as reported in the
+recent article [12]. As shown in Table 2 (taken from [12] with the added last
+row of the TRM result), TRM considerably achieved results higher than all
+of 18 methods on the all three independent testing datasets.
+
+In running Algorithm 2, the thresholds for the weight vector α and the coef-
+ﬁcient vector β are set up as 0.001 and the maximum iterative step is 1000. The
+turning parameter λ is chosen by minimizing the risk function when testing on
+validation dataset. Particularly, we do 10–fold cross validation on the training
+set for each λ belonging to [0, log 50] and compute the risk function
+
+⎛
+
+⎞
+
+R(λ) =
+
+1
+F
+
+F(cid:3)
+
+i=1
+
+⎝
+
+1
+
+(cid:11) f oldi (cid:11)
+
+(cid:3)
+
+xj∈f oldi
+
+(yj − f (xj ))
+
+2
+
+⎠
+
+where f oldi is validation set, f (x) is a tensor predictor learnt from training set
+except validation set f oldi. F is the number of folds to do cross validation on
+training set. In our work, we do F-fold cross validation thus F equals to 10.
+
+In the transformation matrices learning task, we use the labelled dataset col-
+lected from siRecord database [9]. This data set has 2470 siRNA sequences in
+‘very high’ class and 2514 siRNA sequences in ‘low’ and ‘medium’ classes. Each
+siRNA sequence has 19 nucleotides. Seven design rules used to learn matrices
+are Reynolds rule, Uitei Rule, Amarzguioui rule, Jalag rule, Hsieh rule, Takasaki
+
+410
+
+B.T. Ngoc
+
+Table 3. The learnt transformation matrix containing characteristics of Reynolds rule
+
+1
+
+2
+
+3
+
+4
+
+10
+
+11
+
+12
+
+19
+
+A 0.29704 0.217977 0.423469 0.266597 . . . 0.363636 0.246021 0.224727 . . . 0.393939
+C 0.231159 0.235744 0.255102 0.226922 . . .
+0.252513 0.267744 . . . 0.0757576
+G 0.155341 0.211418 0.0459184 0.237968 . . . 0.229437 0.221336 0.260756 . . . 0.161616
+0.27551 0.268513 . . . 0.406926 0.28013 0.246773 . . . 0.368687
+U 0.31646 0.33486
+
+0
+
+rule and Huesken rule. The convergence criteria in Algorithm 1 are set up as
+−8 and the maximum
+following: threshold  for transformation matrices is 2.5E
+iterative step is 5000.
+
+Discussion. As reported in the experimental comparative evaluation, the pro-
+posed TRM achieved higher results than most other methods for prediction of
+siRNA knockdown eﬃcacy. There are some reasons of that. First, it is expensive
+and hard to analyze the knockdown eﬃcacy of siRNAs, and thus most available
+datasets are of relatively small size leading to limited results. Second, TRM has
+its advantages by incorporating domain knowledge (siRNA design rules) found
+from diﬀerent datasets in experiments. Third, TRM is generic and can be eas-
+ily exploited when new design rules are discovered or more analyzed siRNAs
+be obtained. Four, one drawback of TRM is its transformation matrices are
+learned using positional features of available design rules, and thus they lack
+some characteristics eﬀecting to knockdown eﬃcacy of siRNA sequences such
+as GC content, thermodynamic properties, GC stretch, etc. It may be one of
+reasons that at this moment TRM cannot get higher performance when testing
+on HU test set than the best current model SVM [12].
+
+Table 3 shows the learned transformation matrix capturing positional charac-
+teristics of Reynolds rule. One of characteristics is described as “An nucleotide
+‘A’ at position 19”. That characteristic means that at column 19, the cell (1,19)
+has to be the maximum value. In the matrix, the value at this cell is 0.393939
+and is the highest value of this column. In this column, we also know knock-
+down eﬃcacy of each nucleotide at position 19. Therefore, nucleotides can be
+arranged by the decreasing order of their eﬃcacy: A,U, G, and C. In the order,
+nucleotide U has eﬃcacy of 0.368687 that also can be used to design eﬀective
+siRNAs. In addition, if a position on siRNAs is not described in characteristics
+of the design rules, values at the column corresponding to this position is learned
+to satisfy classiﬁcation assumption and property to get knockdown eﬃcacy of
+each nucleotide such as values at columns 1, 2, 4 and so on.
+
+4 Conclusion
+
+In this paper, we have proposed a novel framework to predict knockdown eﬃca-
+cies of siRNA sequences by successfully enriching the siRNA sequences into trans-
+formed matrices incorporating the eﬀective siRNA design rules and predicting the
+
+A Novel Framework to Improve siRNA Eﬃcacy Prediction
+
+411
+
+siRNA knockdown eﬃcacy by bilinear tensor regression. The experimental com-
+parative evaluation on commonly used datasets with standard evaluation proce-
+dure in diﬀerent contexts shows that the proposed framework and corresponding
+methods achieved better results than most existing methods for doing the same
+task. One signiﬁcant feature of the proposed framework is it can be easily extended
+when new design rules are discovered as well as more siRNAs are analyzed by em-
+pirical works.
+
+References
+
+1. Amarzguioui, M., Prydz, H.: An algorithm for selection of functional siRNA se-
+
+quences. Biochem. Biophys. Res. Commun. 316(4), 1050–1058 (2004)
+
+2. Elbashir, S.M., Lendeckel, W., Tuschl, T.: RNA interference is mediated by
+
+21– and 22–nucleotide RNAs. Genes Dev. 15, 188–200 (2001)
+
+3. Harborth, J., Elbashir, S.M., Vandenburgh, K., Manninga, H., Scaringe, S.A., We-
+ber, K., Tuschl, T.: Sequence, chemical, and structural variation of small interfering
+RNAs and short hairpin RNAs and the eﬀect on mammalian gene silencing. Anti-
+sense Nucleic Acid Drug Dev. 13, 83–105 (2003)
+
+4. Hsieh, A.C., Bo, R., Manola, J., Vazquez, F., Bare, O., Khvorova, A., Scaringe, S.,
+Sellers, W.R.: A library of siRNA duplexes targeting the phosphoinositide 3-kinase
+pathway: Determinants of gene silencing for use in cell-based screens. Nucleic Acids
+Res. 32(3), 893–901 (2004)
+
+5. Huesken, D., Lange, J., Mickanin, C., Weiler, J., Asselbergs, F., Warner, J., Mellon,
+B., Engel, S., Rosenberg, A., Cohen, D., Labow, M., Reinhardt, M., Natt, F., Hall,
+J.: Design of a Genome-Wide siRNA Library Using an Artiﬁcial Neural Network.
+Nature Biotechnology 23(8), 955–1001 (2005)
+
+6. Ichihara, M., Murakumo, Y., Masuda, A., Matsuura, T., Asai, N., Jijiwa, M.,
+Ishida, M., Shinmi, J., Yatsuya, H., Qiao, S., et al.: Thermodynamic instability
+of siRNA duplex is a prerequisite for dependable prediction of siRNA activities.
+Nucleic Acids Res. 35(8), e123 (2007)
+
+7. Jagla, B., Aulner, N., Kelly, P.D., Song, D., Volchuk, A., Zatorski, A., Shum,
+D., Mayer, T., De Angelis, D.A., Ouerfelli, O., Rutishauser, U., Rothman, J.E.:
+Sequence characteristics of functional siRNAs. RNA 11(6), 864–872 (2005)
+
+8. Qiu, S., Lane, T.: A Framework for Multiple Kernel Support Vector Regression
+and Its Applications to siRNA Eﬃcacy Prediction. IEEE/ACM Trans. Comput.
+Biology Bioinform. 6(2), 190–199 (2009)
+
+9. Ren, Y., Gong, W., Xu, Q., Zheng, X., Lin, D., et al.: siRecords: An extensive
+database of mammalian siRNAs with eﬃcacy ratings. Bioinformatics 22, 1027–1028
+(2006)
+
+10. Reynolds, A., Leake, D., Boese, Q., Scaringe, S., Marshall, W.S., Khvorova, A.:
+Rational siRNA design for RNA interference. Nat. Biotechnol. 22(3), 326–330
+(2004)
+
+11. Scherer, L.J., Rossi, J.J.: Approaches for the sequence-speciﬁc knockdown of
+
+mRNA. Nat. Biotechnol. 21, 1457–1465 (2003)
+
+12. Sciabola, S., Cao, Q., Orozco, M., Faustino, I., Stanton, R.V.: Improved nucleic
+acid descriptors for siRNA eﬃcacy prediction. Nucl. Acids Res. 41(3), 1383–1394
+(2013)
+
+412
+
+B.T. Ngoc
+
+13. Shabalina, S.A., Spiridonov, A.N., Ogurtsov, A.Y.: Computational models with
+thermodynamic and composition features improve siRNA design. BMC Bioinfor-
+matics 7, 65 (2006)
+
+14. Takasaki, S.: Methods for Selecting Eﬀective siRNA Target Sequences Using a
+Variety of Statistical and Analytical Techniques. Methods Mol. Biol. 942, 17–55
+(2013)
+
+15. Ui-Tei, K., Naito, Y., Takahashi, F., Haraguchi, T., Ohki-Hamazaki, H., Juni, A.,
+Ueda, R., Saigo, K.: Guidelines for the selection of highly eﬀective siRNA sequences
+for mammalian and chick RNA interference. Nucleic Acids Res. 32, 936–948 (2004)
+16. Vert, J.P., Foveau, N., Lajaunie, C., Vandenbrouck, Y.: An accurate and inter-
+
+pretable model for siRNA eﬃcacy prediction. BMC Bioinformatics 7, 520 (2006)
+
+17. Vickers, T.A., Koo, S., Bennett, C.F., Crooke, S.T., Dean, N.M., Baker, B.F.: Eﬃ-
+cient reduction of target RNAs by small interfering RNA and RNase H-dependent
+antisense agents. A Comparative Analysis. J. Biol. Chem. 278, 7108–7118 (2003)
+
+

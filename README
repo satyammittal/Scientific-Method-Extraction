@@ -1,0 +1,18 @@
+# Introduction
+
+1) The set of research papers will be given in a folder which will be given as a command line argument to text.sh
+
+Command : bash text.sh <foldername>
+
+2) It will generate the text files in a folder named "Texts"
+
+3) And Named Entities will be extarcted and stored in "entities" folder 
+Format : <filename>_entities
+
+4) From those entities "phase31.py" will separate True positives and False positives, and give two files in a separate folder "Output"
+
+Format : Output/<filename>_tp and Output/<filename>_fp
+
+# Report
+
+Report included in Report.pdf

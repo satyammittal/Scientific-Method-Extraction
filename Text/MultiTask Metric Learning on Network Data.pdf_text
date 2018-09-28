@@ -1,0 +1,1766 @@
+Multi-Task Metric Learning on Network Data
+
+Chen Fang
+
+Department of Computer Science
+
+Dartmouth College
+
+Hanover, NH, 03755, U.S.A.
+
+chenfang@cs.dartmouth.edu
+
+Daniel N. Rockmore
+
+Department of Computer Science
+
+Department of Mathematics
+
+Dartmouth College
+Hanover, NH, 03755
+
+rockmore@cs.dartmouth.edu
+
+4
+1
+0
+2
+
+ 
+
+v
+o
+N
+0
+1
+
+ 
+
+ 
+ 
+]
+L
+M
+
+.
+t
+a
+t
+s
+[
+ 
+ 
+
+1
+v
+7
+3
+3
+2
+
+.
+
+1
+1
+4
+1
+:
+v
+i
+X
+r
+a
+
+ABSTRACT
+Multi-task learning (MTL) has been shown to improve pre-
+diction performance in a number of diﬀerent contexts by
+learning models jointly on multiple diﬀerent, but related
+tasks. Network data, which are a priori data with a rich
+relational structure, provide an important context for ap-
+plying MTL. In particular, the explicit relational structure
+implies that network data is not i.i.d. data. Network data
+also often comes with signiﬁcant metadata (i.e., attributes)
+associated with each entity (node). Moreover, due to the di-
+versity and variation in network data (e.g., multi-relational
+links or multi-category entities), various tasks can be per-
+formed and often a rich correlation exists between them.
+Learning algorithms should exploit all of these additional
+sources of information for better performance. In this work
+we take a metric-learning point of view for the MTL prob-
+lem in the network context. Our approach builds on struc-
+ture preserving metric learning (SPML) [3].
+In particular
+SPML learns a Mahalanobis distance metric for node at-
+tributes using network structure as supervision, so that the
+learned distance function encodes the structure and can be
+used to predict link patterns from attributes. In the funda-
+mental paper [3] SPML is described for single-task learning
+on single network. Herein, we propose a multi-task version
+of SPML, abbreviated as MT-SPML, which is able to learn
+across multiple related tasks on multiple networks via shared
+intermediate parametrization. MT-SPML learns a speciﬁc
+metric for each task and a common metric for all tasks.
+The task correlation is carried through the common metric
+and the individual metrics encode task speciﬁc information.
+When combined together, they are structure-preserving with
+respect to individual tasks. MT-SPML works on general
+networks, thus is suitable for a wide variety of problems.
+In experiments, we challenge MT-SPML with two common
+real-word applications: citation prediction for Wikipedia ar-
+ticles and social circle prediction in Google+. Our results
+show that MT-SPML achieves signiﬁcant improvement over
+other competing methods.
+
+Categories and Subject Descriptors
+H.2.8 [DATABASE MANAGEMENT]: Database Ap-
+plications—Data mining
+
+General Terms
+Algorithm, performance, theory
+
+Keywords
+Multi-task learning, metric learning, social network,
+prediction
+
+link
+
+INTRODUCTION
+
+1.
+Multi-task learning (MTL) [8, 4, 24, 2, 7] considers the prob-
+lem of learning models jointly and simultaneously over mul-
+tiple, diﬀerent but related tasks. Compared to single-task
+learning (STL), which learns a model for each task inde-
+pendently using only task speciﬁc data, MTL leverages all
+available data and shares knowledge among tasks, thereby
+resulting in better model generalization and prediction per-
+formance. The underlying principle of MTL is that highly
+correlated tasks can beneﬁt from each other via joint train-
+ing, but additional care should be taken to respect the dis-
+tinctiveness of each task, i.e., it is usually inappropriate to
+pool all available data and learn a single model for all tasks.
+
+Despite the popularity and value of MTL, most MTL meth-
+ods are developed for tasks on i.i.d. data. Standard ex-
+amples include phoneme recognition [18] and image recogni-
+tion [22]. Explicitly correlated data, often represented in the
+form of a network, provide a rich source of new applications
+contexts wherein the explicit relatedness of the data might
+be leveraged to improve performance on similarly correlated
+tasks. That is, although each task bears its own distinctive-
+ness, relatedness cannot be ignored and should be exploited
+for good! The following two scenarios, provide two impor-
+tant examples where it is beneﬁcial to exploit the correlation
+between tasks. These scenarios are in fact the settings for
+the experiments using real-world data that we present in
+Section 4.
+
+Scenario 1: Article citation prediction
+Articles tend to cite each other, especially those in the same
+subject area. The citation prediction problem has been stud-
+ied extensively [10, 13, 21, 1, 11]. People either build a
+predictive model for a uniﬁed network [13] (i.e., a citation
+network that contains papers of all subject areas,) or build
+predictive models for each area independently [3]. Since ar-
+ticle content and citation pattern varies across diﬀerent ar-
+
+eas, the former methodology ignores the diﬀerence between
+areas. However, some areas, while labeled as diﬀerent are
+still related, in the sense of both their content and citation
+pattern. Thus the latter methodology fails to exploit the
+correlation among subject areas. For example, computer
+science and electrical engineering articles may be classiﬁed
+or tagged as diﬀerent areas, but in many cases they may still
+have much in common, or at least have signiﬁcant similarity
+or overlap. In this case, to build predictive models for cita-
+tions, a learning algorithm that is capable of utilizing these
+overlaps and explicit commonalities has advantages over tra-
+ditional methods.
+
+Scenario 2: Social circle prediction
+Members of online social networks tend to categorize their
+links to followers/followees. For example, many social net-
+working platforms enable coarse-scale categorizations such
+as “family members,” or “friends and colleagues.” Finer gra-
+dations allow for categorizations such as colleagues at partic-
+ular companies or classmates at speciﬁc schools. A person’s
+social circle, studied in [15], is the ego network of a social
+network user (or “ego”) in which all links belong to the same
+category. I.e., the induced subgraph of a given entity con-
+taining only links of a given type. Given a friend or stranger,
+the goal of social circle prediction is to assign him/her to
+appropriate social circles. Because some social circles are
+related to each other (e.g., family members and childhood
+friends may share some common informative features such
+as geological proximity), advantages may very well accrue if
+the relatedness of the entities was used for the various pre-
+dictions, instead of building predictive assignment model for
+each social circle independently.
+
+As these scenarios suggest, there should be advantages to de-
+veloping methods that can leverage the correlations among
+tasks on network data. In what follows we show that MTL is
+a natural direction to pursue and that it does in fact provide
+some signiﬁcant improvements.
+
+Diﬀerent from i.i.d. data, network data not only has at-
+tributes (metadata) associated with each entity (node), but
+rich structural information, mainly encoded in the links.
+Both attributes and structure should be exploited in learn-
+ing. Structure preserving metric learning (SPML), originally
+developed for single-task learning [3] is such a method. It
+learns a Mahalanobis distance metric for node attributes by
+using network structure as supervision, so that the learned
+distance function encodes the structure and can be used to
+predict link patterns from attributes. Inspired by the use of
+SPML in the single task context, we propose its multi-task
+version, MT-SPML, which learns Mahalanobis distance met-
+rics jointly over all tasks. More precisely, it learns a common
+metric for all tasks and one metric for each individual task.
+The common metric construction follows the methodology
+of shared intermediate parameterization [8, 16], which al-
+lows sharing knowledge between tasks. While a single task
+speciﬁc metric captures task speciﬁc information, when com-
+bined, they work together to preserve the connectivity struc-
+ture of the corresponding network, thus are useful for link
+prediction from attributes. We further show that as in the
+case of SPML, MT-SPML can be optimized with eﬃcient
+online methods similar to OASIS [5] and PEGASOS [19]
+via stochastic gradient descent. Finally, MT-SPML is de-
+
+signed for general networks, and in experiments we apply
+MT-SPML to two common, but diﬀerent real-world predic-
+tion problems (citation prediction and social circle predic-
+tion) with promising results.
+
+2. RELATED WORK
+There is a large body of work on MTL for i.i.d. data. Yu et
+al. [24] applied hierarchical Bayesian modeling to nonpara-
+metric Gaussian processes, and the resulting method was
+used for text categorization. Evgeniou et al. [8] extended
+Support Vector Machines (SVMs) to MTL via parameter
+sharing, and the method was applied to learn predictive
+models for exam scores of student at diﬀerent schools. Fol-
+lowing the same intuition as [8], Parameswaran et al. [16]
+proposed the multi-task version of large margin nearest neigh-
+bor metric learning [23], which was tested on speech recog-
+nition. In [22], Wang et al. applied MTL to help face recog-
+nition and image retrieval. Very recently, Seltzer et al. [18]
+showed how multi-task deep neural network can further help
+phoneme recognition.
+
+Researchers also have been studying the problem of learn-
+ing across multiple graph data for various purposes. Zhou
+et al. [25] improved document recommendation by ﬁnding
+an embedding for multiple graphs via matrix factorization.
+In [20], Tang et al. attempted to do clustering jointly over
+diﬀerent graphs. Prakash et al. [6] developed an algorithm
+to jointly do clustering and classiﬁcation on networks.
+In
+the area of relational learning, tensor decomposition-based
+methods are usually applied [14] for problems on multi-
+relational data.
+
+Of greatest relevance for our work is [17], wherein Qi et al.
+carefully developed a mechanism to sample across networks
+to predict missing links in a target network. Our paper
+diﬀers from it in (at least) the following ways. First and
+foremost, we aim at improving prediction performance of all
+networks, while [17] targets at a speciﬁc network and uses
+sources networks to help link prediction on it. Second, MT-
+SPML essentially learns a joint embedding of both attribute
+features and network topological structure, while [17] tries
+to linearly combine attribute features and local structure in-
+formation, e.g. the number of shared neighbors between a
+pair of nodes. This is another important diﬀerence. In this
+paper, we are looking at improving the performance of pre-
+dicting links only from attributes. Hence, given an incoming
+node at test time, we do not have any prior knowledge of its
+connectivity information, which is not an uncommon sce-
+nario in practice, e.g. nascent network or sparse network.
+In these scenarios, [17] is more likely to waste its modeling
+power on local structure features, which is often unavailable.
+The lack of initial structure information also makes our prob-
+lem somewhat more diﬃcult than the traditional link pre-
+diction problem, which has a snapshot of current network,
+which is usually not sparse, and predicts future links among
+already observed nodes. Nevertheless, the metric learned by
+our approach can help the traditional link prediction as well
+if attributes are available. Last but not least, we aim to
+naturally marry MTL and network/graph/relational data,
+to take advantage of MTL’s ability of handling relatedness
+and heterogeneity. The proposed MT-SPML is a general
+method, which can handle diﬀerent types of correlations
+and variations among tasks (e.g.,the marginal distribution
+
+of node attributes diﬀers from task to task, and the seman-
+tics or types of links can also vary depending on speciﬁc
+task). Thus, our approach can be applied to general net-
+work data, like article citation, social networks and email
+networks.
+
+3. OUR APPROACH
+In this section, we will ﬁrst cover the technical details of
+Structure Preserving Metric Learning (SPML). Then, both
+derivation and sketched proof of MT-SPML are provided.
+
+3.1 Notations and preliminaries
+Given a network, we model it as a graph G = (X, A),
+where X ∈ Rd×n represents the node attributes and A ∈
+Rn×n is the binary adjacency matrix, whose entry Aij in-
+dicates the linkage information between node i and node
+j. A Mahalanobis distance is parameterized by a positive
+semideﬁnite (PSD) matrix M ∈ Rd×d, where M (cid:23) 0. The
+corresponding distance function is deﬁne as dM(xi, xj) =
+(xi − xj)⊤M(xi − xj). This is equivalent to the existence of
+a linear transformation L ∈ Rd×d on the feature space such
+that M = L⊤L. Given a metric M, to predict the struc-
+ture pattern of X, we adopt the simple k-nearest neighbor
+algorithm, which is denoted as C, meaning each node is con-
+nected with its top-k nearest neighbors under the deﬁned
+metric. Mathematically, we denote it as C(X, M) = A, and
+we say M is structure preserving or that it preserves A. The
+Frobenius norm is demoted as || · ||F .
+
+We denote a set of networks as G = {G1, G2, . . . , GQ}. Each
+individual network Gq has its own Xq and Aq. We use q
+to index each network and (i, j) for its element. Thus, for
+notational simplicity Aqij stands for element (i, j) in Aq.
+Similarly, Xqi represents the feature of node i in Xq.
+In
+algorithms, we will use a superscript to index over iteration,
+e.g., Mk refers to the kth iteration of M under the relevant
+iterative process.
+
+3.2 SPML
+The goal of SPML is to learn M from a network G = (X, A),
+such that M preserves A. This problem has a semideﬁnite
+max margin learning formulation, which is as follows:
+
+min
+M(cid:23)0
+
+λ
+2
+
+||M||2
+
+F + ξ
+
+(1)
+
+subject to the following constraints:
+
+∀i,j, dM(xi, xj) ≥ (1−Aij) max
+
+l
+
+(AildM(xi, xl))+1−ξ (2)
+
+In (1) the Frobenius norm is a regularizer on M and λ is the
+corresponding weight parameter. The key idea to achieve
+structure preserving is the set of linear constraints in (2).
+This essentially enforces that from node i, the distances to
+all disconnected nodes must be larger than the distance to
+the furthest connected node. Thus, when the constraints in
+(2) are all satisﬁed, C(X, M) will exactly produce A. Fur-
+thermore, to allow for violation (with penalty), the slack
+variable ξ is introduced to both (1) and (2).
+
+With the many constraints in (2), optimizing (1) becomes
+unfeasible when the network has few hundreds of nodes. But
+
+a rewriting of the problem as follows allows us to use stochas-
+tic subgradient descent (see Algorithm 1):
+
+f (M) =
+
+λ
+2
+
+||M||2
+
+F +
+
+1
+
+|S| X(i,j,l)∈S
+
+max(∆M(xi, xj, xl) + 1, 0)
+
+(3)
+where ∆M(xi, xj , xl) = dM(xi, xl) − dM(xi, xj). S is deﬁned
+as S = {(i, j, l)|Ai,l = 1 ∧ Ai,j = 0}, so the triplet (i, j, l)
+means that there is a link between node i and node l, but not
+between i and j. The subgradient of (3) can be calculated
+as
+
+▽ f = λM +
+
+1
+
+|S| X(i,j,l)∈S+
+
+(cid:18)(xi − xl) (xi − xl)⊤
+
+− (xi − xj)(xi − xj)⊤(cid:19) (4)
+
+where S+ is the set of triplets whose hinge losses are pos-
+itive. At every iteration t of Algorithm 1, B triplets are
+randomly sampled and the corresponding stochastic subgra-
+dient is calculated with regard to the current metric Mt
+and these triplets. Since Algorithm 1 is a variant of PE-
+GASOS [19], its complexity does not depend on training set
+size n, but on feature dimensionality d. For the number of
+iterations T needed to reach convergence, proved by [3, 19],
+it depends on parameter λ and optimization error, which
+measures how close the ﬁnal objective value is to the global
+optimal objective value. Notice that after updating M, there
+is an optional step, in which the current M is projected to
+its PSD cone. Experiments in [3] show that delaying this
+operation to the end of the algorithm works well in practice
+and further reduces computational complexity.
+
+ηt ← 1
+λ×t
+s ← ∅
+for b = 1, 2, . . . , B do
+
+Algorithm 1 Stochastic subgradient descent for SPML
+Input: G = (X, A), λ, T, B
+Output: M (cid:23) 0
+1: M0 ← Id×d
+2: for t = 1, 2, . . . , T do
+3:
+4:
+5:
+6:
+7:
+8:
+9: Mt ← Mt−1 − ηt ▽ f (Mt−1, s)
+10: Mt ← [Mt]+ (Optional: Project to PSD cone)
+11: end for
+12: return MT
+
+Random sample (i, j, l) from S
+s ← s ∪ (i, j, l)
+
+end for
+
+3.3 MT-SPML
+In this section, we show how MT-SPML extends SPML to
+multi-task setting.
+
+The input is a set of networks G = {G1, G2, . . . , GQ}. Each
+network is Gq = (Xq, Aq). Our approach is a general
+method, thus it works for both problems with or without
+nodes overlapping. Note that, the nodes of all networks
+have common feature spaces. MT-SPML treats each net-
+work as a task. It follows the idea of shared intermediate
+parametrization as in [16] to enable knowledge transfer be-
+tween tasks. The goal is to learn jointly over G a task speciﬁc
+metric Mq for each task and a common metric M0, through
+
+which knowledge transfers among tasks , so that the com-
+bined metric (M0 + Mq) respects the structure of Gq, for
+all Gq ∈ G. Thus, the distance between two nodes in Gq is
+deﬁned as
+
+dq(xi, xj) = (xi − xj)⊤(M0 + Mq)(xi − xj).
+
+(5)
+
+of (8) with respect to M0 and Mq are
+
+▽M0 f = γ0 (M0 − I)
+
++
+
+Q
+
+Xq=1
+
+1
+
+|Sq| X(i,j,l)∈Sq+
+
+(cid:18)(xqi − xql) (xqi − xql)⊤
+− (xqi − xqj) (xqi − xqj)⊤(cid:19) (9)
+
+MT-SPML is formulated as a regularized learning problem
+as follows:
+
+and
+
+min
+
+M0 ,M1,...,MQ
+
+γ0
+2
+
+||M0 − I||2
+
+F +
+
+Q
+
+Xq=1
+
+γq
+2
+
+||Mq||2
+
+F +
+
+Q
+
+Xq=1
+
+ξq
+
+(6)
+
+▽Mq f = γqMq +
+
+subject to the following constraints:
+
+∀q, i, j, :
+
+(7)
+
+dq(xqi, xqj) ≥ (1 − Aqij ) maxl(Aqildq(xqi, xql)) + 1 − ξq.
+
+In order to solve it, we rewrite it as following by incorporat-
+ing the constraints:
+
+f (M0, M1, . . . , MQ) =
+
+γ0
+2
+
+||M0 − I||2
+
+F +
+
+Q
+
+Xq=1
+
+γq
+2
+
+||Mq||2
+
+F
+
++
+
+Q
+
+Xq=1
+
+1
+
+|Sq| X(i,j,l)∈Sq
+
+max(∆q(xqi, xqj, xql) + 1, 0)
+
+(8)
+
+Algorithm 2 Stochastic subgradient descent for MT-SPML
+Input: G = {G1, G2, . . . , GQ}, where Gq = (Xq, Aq),
+
+γ0, γ1, . . . , γQ, T , B
+
+λ×t
+
+q ← Id×d
+
+for q = 1, 2, . . . , Q do
+
+q ← 1
+ηt
+sq ← ∅
+for b = 1, 2, . . . , B do
+
+Output: M0, M1, . . . , MQ (cid:23) 0
+1: for q = 0, 1, . . . , Q do
+2: M0
+3: end for
+4: for t = 1, 2, . . . , T do
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15: Mt
+16: Mt
+17: end for
+18: return MT
+
+end for
+Mt
+Mt
+
+q ← Mt−1
+q ← [Mt
+
+0 ← Mt−1
+0 ← [Mt
+
+1 , . . . , MT
+
+0 , MT
+
+end for
+
+Q (cid:23) 0
+
+Random sample (i, j, l) from Sq
+sq ← sq ∪ (i, j, l)
+
+q ▽Mq f (Mt−1
+
+q − ηt
+q]+ (Optional: Project to PSD cone)
+
+, sq)
+
+q
+
+0 ▽M0 f (Mt−1
+
+0 − ηt
+0]+ (Optional: Project to PSD cone)
+
+, {s1, s2, . . . , sQ})
+
+0
+
+where ∆q(xqi, xqj, xql) = dq(xqi, xql)−dq(xqi, xqj). Although
+(8) has more unknown variables than (3), with respect to
+each unknown, it is in the same form as (3). Therefore, (8)
+can be solved with the same stochastic subgradient descent
+method using partial subgradient. The partial subgradients
+
+1
+
+|Sq| X(i,j,l)∈Sq+
+
+(cid:18)(xqi − xql) (xqi − xql)⊤
+
+− (xqi − xqj ) (xqi − xqj)⊤(cid:19).
+
+(10)
+
+With all necessary information, the optimization algorithm
+is outlined in Algorithm 2. Algorithm 2 runs for T itera-
+tions. Within each iteration, it does two things: (1) Ran-
+domly sample B triplets for each task, so as to calculate the
+partial subgradient and update the corresponding unknown;
+(2) Calculate the partial subgradient of the common metric
+M0 and update it using the Q × B triplets already sam-
+pled. Optionally, the metric matrices can be projected to
+their PSD cones. The analysis of Algorithm 1 still holds for
+Algorithm 2, thus it scales up with regard to feature dimen-
+sionality, optimization error and the parameters γq, but not
+the training set size.
+
+4. EXPERIMENTS
+In this section, we present experimental results on real-world
+data. We apply MT-SPML to the two scenarios mentioned
+in the Introduction: article citation prediction and social
+circle prediction. We show that in both cases, MT-SPML
+can signiﬁcantly improve prediction performance. 1
+
+4.1 Citation prediction on Wikipedia
+The data is obtained from [3]. The articles from the follow-
+ing three areas are crawled from Wikipedia: search engine,
+graph theory and philosophy. The citations between arti-
+cles within each area are also crawled. The goal is, given
+an article, to predict the referencing of other articles within
+its area solely from its content. Therefore, at test time, no
+reference information of the test article is made available
+at all. The challenge of this problem is the fact that: (1)
+there is little node overlap between networks (i.e., an arti-
+cle belongs to only one area), thus the marginal distribution
+of node attributes P (Xq) may vary drastically from area to
+area, which poses diﬃculty for knowledge transfer; (2) the
+conditional probability of structure on attributes P (A|X)
+may also vary, because some words are informative and in-
+dicative for some areas, but not for others. The statistics of
+this dataset is detailed in Table 1. Bag-of-words is used to
+capture article content and the dimensionality is 6695. The
+high dimensionality reduces the need to learn full matri-
+ces. Therefore, we choose to learn diagonal metric matrices.
+This further reduces computational complexity. We split
+the dataset 80%/20% as training and testing respectively,
+then ﬁx the testing part and vary the size of training set
+by sampling from the training part. We end up sampling
+1Code
+http://www.cs.dartmouth.edu/~chenfang/temp/MT_SPML/demo_code.tar.gz
+
+download
+
+available
+
+data
+
+and
+
+are
+
+for
+
+at
+
+20%, 40%, 60%, 80%, and ﬁnally 100% of the training part.
+Model selection is carried out on the sampled training set via
+5-fold cross-validation. At test stage, for every test example
+our algorithm suggests other articles for citation according
+to their distances to test article. We build the receiver op-
+erator characteristic (ROC) curve for every test article, and
+use the average area under the curve (AUC) of the entire test
+set as performance measurement. We compare our results
+with two families of methods:
+
+SVM methods We apply SVM-based methods in order to
+show the importance of modeling network structure. Since
+SVM-based methods do not model network structure, we
+need to construct features to encode this piece of informa-
+tion. The training examples are constructed by taking the
+pairwise diﬀerence of the attributes between two nodes. The
+training labels are binary, with 1 representing the existence
+of a link between a pair of nodes and 0 the absence. For a
+given edge, we measure its distance/length using the output
+of the classiﬁcation score, which represents the conﬁdence of
+having a link. Although the classiﬁcation score is inversely
+proportional to the notion of distance, a simple conversion
+can make the two variables proportional to each other. Thus
+ROC and AUC can be calculated. The following speciﬁc
+methods are included:
+
+• ST-SVM: This is the normal single-task SVM. An
+SVM is trained for each network independently.
+It
+does not explore the correlation between tasks. The
+model is trained and tested with LIBLINEAR [9].
+
+• U-SVM: We train one SVM for all networks by pool-
+ing all data together. We use the capital letter “U” to
+represent the naive strategy of data pooling. This is
+essentially ignoring the fact that training examples are
+from diﬀerent tasks and treating it as a simple single
+task learning problem. The model is also trained and
+tested using LIBLINEAR [9].
+
+• MT-SVM: This is the multi-task SVM in [8]. Simi-
+lar to our model, it jointly learns a common decision
+boundary for all and a speciﬁc boundary for each task.
+At test time, the common and task speciﬁc decision
+boundary together form the ﬁnal classiﬁcation model
+for each task. This method exploits task correlations
+via intermediate parameter sharing, but does not use
+network structure at the model level. We used the
+software from [12] for training and testing.
+
+SPML methods: We apply three methods that are based
+on SPML. Compared to SVM-based methods, these meth-
+ods explicitly model the network structure information. There-
+fore, the feature used here is simply the node attributes and
+links become linear constraints. Given an edge, its distance
+is just the Mahalanobis distance deﬁned by learned metrics.
+The following methods are included:
+
+• ST-SPML: This is the single-task SPML [3]. A metric
+is learned for each network independently. It models
+network structure but not task correlations.
+
+Areas
+
+# of nodes # of edges # of features
+
+Search Engine
+Graph Theory
+
+Philosophy
+
+269
+223
+303
+
+332
+917
+921
+
+6695
+6695
+6695
+
+Table 1: Statistics of Wikipedia article data
+
+• U-SPML: “U” means data pooling. Training exam-
+ples from all tasks are pooled together and the learn-
+ing procedure is simply ST-SPML. This is a naive way
+of sharing knowledge between tasks, but it does not
+respect the diﬀerences between and distinctiveness of
+tasks. Thus we expect inferior results, particularly for
+less related tasks.
+
+• MT-SPML: This is our method. By comparing it to
+other methods, we can demonstrate the fact that MT-
+SPML not only models the structure of all networks
+nicely, but also exploits relatedness while respecting
+the distinctiveness of tasks.
+
+Finally, we also compare to the direct use of the original fea-
+ture vector, i.e., using Euclidean distance between feature
+vectors as the distance. While we are aware of the existence
+of other link prediction methods, such as Adamic-Adar [13].
+As we have already mentioned, Adamic-Adar [13] only pre-
+dicts potential links for nodes that are already present in
+the network and thus rely heavily on a snapshot of dense
+network structure. Thus, it is not suitable for our experi-
+ments, where no initial links for the test node are provided.
+Moreover, CNLP [17] targets at improving link prediction
+on one speciﬁc network by using other networks. Thus, its
+goal is fundamentally diﬀerent from ours. Our methods en-
+code observed structures in the learned metric and can be
+used for both unobserved test nodes and sparse graphs.
+
+All the results are reported in Fig.1. The ﬁrst thing we see
+is that SVM-based methods perform the worst when there
+are fewer training examples while the SPML family achieves
+good results in all settings, due to its ability to model struc-
+ture information. We also ﬁnd that among the SPML meth-
+ods, MT-SPML consistently outperforms the others, which
+implies that MT-SPML is better at exploiting task corre-
+lations.
+Interestingly, we notice that the least amount of
+improvement from MT-SPML is found for philosophy arti-
+cles. This observation seems to be aligned with the intuition
+that search engine-related and graph theory-related papers
+probably have more in common with each other than with
+philosophy papers.
+
+We also show the convergence behavior of MT-SPML by
+plotting the value of |Sq+|, number of violated constraints
+among those randomly sampled ones, for every iteration for
+each task. The fewer the number of violated constraints,
+the better the new metric respects the network structure.
+In experiments we set B, the time of random sampling, to
+be 10. In order to make a clearer demonstration, in Fig.2
+we set B to be 100. As shown by Fig.2, the numbers of
+violated constraints of all tasks drop quickly within the ﬁrst
+1000 iterations and stabilizes after 4000 iterations.
+
+85
+
+80
+
+75
+
+70
+
+65
+
+60
+
+)
+
+%
+
+(
+ 
+
+ 
+
+C
+U
+A
+n
+o
+i
+t
+c
+d
+e
+r
+P
+k
+n
+L
+
+i
+
+ 
+
+i
+
+55
+
+ 
+
+20
+
+Overall Performance
+
+ 
+
+EUC
+MT−SPML
+U−SPML
+ST−SPML
+MT−SVM
+U−SVM
+ST−SVM
+
+100
+
+40
+
+60
+
+Training Set Size (%)
+
+80
+
+Search Engine Papers
+
+Graph Theory Papers
+
+Philosophy Papers
+
+)
+
+%
+
+(
+ 
+
+ 
+
+C
+U
+A
+n
+o
+i
+t
+c
+d
+e
+r
+P
+k
+n
+L
+
+i
+
+ 
+
+i
+
+90
+
+80
+
+70
+
+60
+
+50
+
+20
+
+)
+
+%
+
+(
+ 
+
+ 
+
+C
+U
+A
+n
+o
+i
+t
+c
+d
+e
+r
+P
+k
+n
+L
+
+i
+
+ 
+
+i
+
+85
+
+80
+
+75
+
+70
+
+65
+
+60
+
+55
+
+20
+
+100
+
+40
+
+60
+
+80
+
+Training Set Size (%)
+
+)
+
+%
+
+(
+ 
+
+ 
+
+C
+U
+A
+n
+o
+i
+t
+c
+d
+e
+r
+P
+k
+n
+L
+
+i
+
+i
+
+ 
+
+80
+
+75
+
+70
+
+65
+
+60
+
+55
+
+20
+
+100
+
+40
+
+60
+
+80
+
+100
+
+Training Set Size (%)
+
+40
+
+60
+
+80
+
+Training Set Size (%)
+
+Figure 1: Link prediction performance on Wikipedia article data. Training set size is varied. Smaller ﬁgures
+in the lower half separate out the individual performance for each area. The bigger ﬁgure on the top is the
+average AUC performances over all three areas.
+
+Search Engine Papers
+
+Graph Theory Papers
+
+Philosophy Papers
+
+60
+
+50
+
+40
+
+30
+
+20
+
+10
+
+s
+t
+n
+i
+a
+r
+t
+s
+n
+o
+c
+ 
+d
+e
+t
+a
+l
+o
+i
+v
+ 
+f
+o
+ 
+r
+e
+b
+m
+u
+N
+
+0
+0
+
+s
+t
+n
+i
+a
+r
+t
+s
+n
+o
+c
+ 
+d
+e
+t
+a
+l
+o
+i
+v
+ 
+f
+o
+ 
+r
+e
+b
+m
+u
+N
+
+100
+
+80
+
+60
+
+40
+
+20
+
+0
+0
+
+1,000 2,000 3,000 4,000 5,000 6,000
+
+Iterations
+
+1,000 2,000 3,000 4,000 5,000 6,000
+
+Iterations
+
+80
+
+70
+
+60
+
+50
+
+40
+
+30
+
+20
+
+10
+
+s
+t
+n
+i
+a
+r
+t
+s
+n
+o
+c
+ 
+d
+e
+t
+a
+l
+o
+i
+v
+ 
+f
+o
+ 
+r
+e
+b
+m
+u
+N
+
+0
+0
+
+1,000 2,000 3,000 4,000 5,000 6,000
+
+Iterations
+
+Figure 2: Number of violated constraints within ﬁrst 5500 iterations. 100 constraints are sampled at every
+iteration.
+
+4.2 Social circle prediction on Google+
+Every member of an online social network (e.g., Google+)
+is the ego of his/her (sub-)network and tends – or may
+be forced – to categorize his/her relationships (e.g.
+fam-
+ily members, college friends or childhood friends). For each
+class of relationships, there is a sub-network associate with
+it, the social circle, which is directly formalized in the on-
+line structures of Google+ (see [15]). In this section, given
+a social network user (the ego) and his/her friends, we want
+to predict his/her social circles, namely the type of relation-
+ships between ego and ego’s friends based on proﬁle infor-
+mation. We are only interested in the ego network, meaning
+that we do not predict the links between friends. A similar
+topic is studied by McAuley et al [15], where the setup is
+very diﬀerent from ours. They assume the observation of
+an entire ego network, including attributes and structure,
+but not any social circle labels, and the goal is to assign
+social circle labels to links in an unsupervised manner. Our
+problem uses a supervised learning setting, where we observe
+only parts of the network and the corresponding social circle
+labels. For the prediction of each social circle, we treat it as
+link prediction. However, as mentioned in our introduction
+(Section 1), the correlation between social circles should be
+exploited. Thus, we treat the prediction of each social circle
+as a task, and MT-SPML is applied to learn metrics jointly
+over the underlying ego networks of all social circles. Note
+that, as reported in [15], social circles largely overlap with
+each other, which implies strong correlations and MTL is
+thus likely to achieve a more signiﬁcant performance gain.
+We obtain data from [15], which was from Google+ users
+and information is anonymous. We randomly pick one user
+and his/her social circles for our experiment. The entire ego
+network has 4402 nodes and 5 social circles. The proﬁle of all
+nodes is also preserved. There are 6 classes of feature types,
+including gender, institution, job title, last name, place, and
+university. We build a bag-of-words feature for all feature
+types and concatenate them all, resulting in a feature vector
+of 2969 dimensions.
+
+In this experiment, we adopt a diﬀerent procedure. We start
+with using ST-SPML to learn a metric for each social circle
+independently. Then, to show the advantage of doing MTL
+jointly over multiple tasks, we run MT-SPML on various
+numbers of social circles. To avoid the exponential number
+of social circle combinations, we index them from 1 to 5. We
+begin by running on {1,2} and add one more social circle at
+a time in order, resulting in the following four combinations:
+{1,2}, {1,2,3}, {1,2,3,4}, {1,2,3,4,5} which we will con-
+tinue to use in the following experiments. In this way, we
+can see the behavior of the algorithms as more relevant tasks
+joining.
+In Fig. 3, we compare ST-SPML to MT-SPML
+on the four combinations of social circles. Note that, be-
+cause of the inferior performance of SVM based methods on
+Wikipedia article data, we entirely omit them in this exper-
+iment. Clearly, as shown in Fig. 3, all social circles beneﬁt
+from MTL and the improvement is signiﬁcant, except for
+Social Circle 2, whose performance gain is slight. We specu-
+late that Social Circle 2 is not closely related to other circles
+(e.g., in terms of the number of overlapping nodes). We will
+discuss the case of Social Circle 2 later.
+
+Now we compare MT-SPML to U-SPML, which simply pools
+all data together and estimates a model for all tasks. Both
+
+2
+
+3
+
+4
+
+5
+
+1
+0
+
+Social Circles
+
+1
+2
+3
+4
+5
+
+1.1% 81.9% 89.6% 84.1%
+1.1%
+1.1%
+73.5% 68.9%
+93.7%
+
+1.1%
+81.9% 0.9%
+89.6% 1.1% 73.5%
+84.1% 1.1% 68.9% 93.7%
+
+0
+
+0
+
+0
+
+0.9%
+
+0
+
+Table 2: Statistics of overlapping nodes between so-
+cial circles. Overlapping ratios are presented.
+
+MT-SPML and U-SPML are applied to the four combination
+settings of diﬀerent social circles. As shown by Fig. 4, MT-
+SPML consistently and signiﬁcantly outperforms U-SPML
+at all locations.
+
+Now we would like to further investigate Social Circle 2. We
+ﬁrst show some statistics in Table 2, where we show the
+percentage of node overlapping between each pair of social
+circles. The overlap is deﬁned as the intersection of nodes
+over the union. As we can see, some circles are largely over-
+lapped (e.g., {1,3} have 81.9% nodes in common), while
+Social Circle 2 barely overlaps with the others. Although
+overlapping is not the only quantitative measurement of cor-
+relations between social circles, a substantial set of common
+nodes suggests that there are some shared semantics be-
+tween two relationships. The statistics of Table 2 supports
+our earlier speculation as to why Social Circle 2 does not
+beneﬁt from joint learning as much as the others.
+
+Furthermore, we would like to again show the advantage of
+MT-SPML by showing the results of a pair of tasks that
+are less correlated to each other. We choose Social Circles
+{1,2}, since they have only 1.1% nodes in common. In Fig.
+5, MT-SPML is jointly learned on {1,2}, U-SPML is learned
+via data pooling, and ST-SPML is trained on 1 and 2 inde-
+pendently. The prediction performances of two tasks are
+reported in the two groups of bars respectively. As shown
+in Fig. 5, MT-SPML still gets 2%-5% performance improve-
+ment over ST-SPML (bars with circles on top). However,
+the strategy of simple data pooling used by U-SPML (bars
+with down pointing triangle) reduces the performance (pro-
+duces results worse than ST-SPML). This observation sug-
+gests that on diﬃcult cases where tasks are less relevant,
+MTL is still able to utilize useful correlations, while respect-
+ing the boundaries between tasks.
+
+5. CONCLUSIONS
+In this paper, we proposed MT-SPML, a large margin-based
+multi-task learning method for network data. It operates on
+networks with node attributes. It learns a task speciﬁc dis-
+tance metric for every task and a common distance metric
+for all. By combining a task speciﬁc metric with the com-
+mon distance, the ﬁnal metric preserves the structure of the
+corresponding network, thus it can be used to predict link
+patterns on sparse nascent networks or for incoming nodes
+at test time. We applied MT-SPML to two common real-
+world problems, article citation prediction and social circle
+prediction. Better results were achieved (as compared to
+reasonable baselines) and detailed analysis was provided.
+The importance of our work lies in the fact that network
+data has large variation and diversity, thus many related
+
+)
+
+%
+
+(
+ 
+
+ 
+
+C
+U
+A
+n
+o
+i
+t
+c
+d
+e
+r
+P
+k
+n
+L
+
+i
+
+ 
+
+i
+
+0.85
+
+0.8
+
+0.75
+
+0.7
+
+0.65
+
+0.6
+
+0.55
+
+ 
+
+Social circle 1
+Social circle 2
+Social circle 3
+Social circle 4
+Social circle 5
+
+ 
+
+ST−SPML
+
+MT−SPML{1,2} MT−SPML{1,2,3} MT−SPML{1,2,3,4}
+
+MT−SPML{1,2,3,4,5}
+
+Figure 3: Link prediction performance on Google+ data. Social circles are color coded. The comparison is
+between ST-SPML and MT-SPML. The ﬁrst group contains the prediction performance of ST-SPML on all
+social circles, while the other groups show the performance of MT-SPML that learned and tested on multiple
+combinations of social circles, for example, MT-SPML{1,2,3} means learning and testing on Social Circle 1,
+2 and 3.
+
+0.85
+
+0.8
+
+)
+
+%
+
+(
+ 
+
+ 
+
+C
+U
+A
+n
+o
+i
+t
+c
+d
+e
+r
+P
+k
+n
+L
+
+i
+
+ 
+
+i
+
+0.75
+
+0.7
+
+0.65
+
+0.6
+
+0.55
+
+ 
+
+{1,2}
+
+{1,2,3}
+
+{1,2,3,4}
+
+{1,2,3,4,5}
+
+ 
+
+MT−SPML
+U−SPML
+Social circle 1
+Social circle 2
+Social circle 3
+Social circle 4
+Social circle 5
+
+Figure 4: Link prediction performance on Google+ data. The comparison is between MT-SPML and U-
+SPML. Social circles are color coded. Diﬀerent methods for the same task are compared side by side.
+U-SMPL is indicated by a downward pointing triangle. Each group is trained and tested on a set of social
+circles. For example, {1,2,3} means learning and testing on Social Circle 1, 2 and 3.
+
+[8] T. Evgeniou and M. Pontil. Regularized multi–task
+
+learning. In KDD, 2004.
+
+[9] R.-E. Fan, K.-W. Chang, C.-J. Hsieh, X.-R. Wang,
+and C.-J. Lin. Liblinear: A library for large linear
+classiﬁcation. Journal of Machine Learning Research,
+9:1871–1874, 2008.
+
+[10] M. A. Hasan, V. Chaoji, S. Salem, and M. Zaki. Link
+
+prediction using supervised learning. In In Proc. of
+SDM 06 workshop on Link Analysis, Counterterrorism
+and Security, 2006.
+
+[11] H. Kashima and N. Abe. A parameterized
+
+probabilistic model of network evolution for
+supervised link prediction. In ICDM, 2006.
+
+[12] L. Liang and V. Cherkassky. Connection between
+
+svm+ and multi-task learning. In IJCNN, 2008.
+
+[13] D. Liben-Nowell and J. Kleinberg. The link prediction
+
+problem for social networks. In CIKM, 2003.
+
+[14] B. London, T. Rekatsinas, B. Huang, and L. Getoor.
+
+Multi-relational learning using weighted tensor
+decomposition with modular loss. CoRR,
+abs/1303.1733, 2013.
+
+[15] J. J. McAuley and J. Leskovec. Learning to discover
+
+social circles in ego networks. In NIPS, 2012.
+
+[16] S. Parameswaran and K. Weinberger. Large margin
+
+multi-task metric learning. In J. Laﬀerty, C. K. I.
+Williams, J. Shawe-Taylor, R. Zemel, and A. Culotta,
+editors, NIPS. 2010.
+
+[17] G.-J. Qi, C. C. Aggarwal, and T. S. Huang. Link
+
+prediction across networks by biased cross-network
+sampling. In ICDE, 2013.
+
+[18] M. Seltzer and J. Droppo. Multi-task learning in deep
+neural networks for improved phoneme recognition. In
+Acoustics, Speech and Signal Processing (ICASSP),
+2013 IEEE International Conference on, 2013.
+
+[19] S. Shalev-Shwartz, Y. Singer, N. Srebro, and
+
+A. Cotter. Pegasos: primal estimated sub-gradient
+solver for svm. Math. Program., 127(1):3–30, 2011.
+[20] W. Tang, Z. Lu, and I. S. Dhillon. Clustering with
+
+multiple graphs. In ICDM, 2009.
+
+[21] B. Taskar, M. fai Wong, P. Abbeel, and D. Koller.
+Link prediction in relational data. In NIPS, 2003.
+
+[22] X. Wang, C. Zhang, and Z. Zhang. Boosted multi-task
+
+learning for face veriﬁcation with applications to web
+image and video search. In CVPR, 2009.
+
+[23] K. Q. Weinberger and L. K. Saul. Distance metric
+
+learning for large margin nearest neighbor
+classiﬁcation. Journal of Machine Learning Research,
+10, 2009.
+
+[24] K. Yu, V. Tresp, and A. Schwaighofer. Learning
+
+gaussian processes from multiple tasks. In ICML, 2005.
+[25] D. Zhou, S. Zhu, K. Yu, X. Song, B. L. Tseng, H. Zha,
+
+and C. L. Giles. Learning multiple graphs for
+document recommendations. In WWW, 2008.
+
+)
+
+%
+
+(
+ 
+
+ 
+
+ 
+
+C
+U
+A
+n
+o
+i
+t
+c
+d
+e
+r
+P
+k
+n
+L
+
+i
+
+i
+
+0.85
+
+0.8
+
+0.75
+
+0.7
+
+0.65
+
+0.6
+
+0.55
+
+ 
+
+ 
+
+MT−SPML on {1,2}
+U−SPML on {1,2}
+ST−SPML
+Social circle 1
+Social circle 2
+
+social cirle 1
+
+social circle 2
+
+Figure 5: U-SPML negatively impacts performance
+when training on {1,2}, two less relevant tasks. MT-
+SPML is able to improve performance compared to
+ST-SPML by exploiting useful correlations, while U-
+SPML gets inferior results.
+
+tasks can be performed, and we are able to better exploit
+the useful correlations. Moreover, since MT-SPML is a gen-
+eral method and can be optimized via stochastic gradient
+descent with good convergence behavior, it is suitable for
+general (and large) network data and can be widely applied
+to real-world problems. All the code and data used in ex-
+periments are available for download at the link given in the
+paper.
+
+6. ACKNOWLEDGMENTS
+We are grateful to our funding sources. The authors were
+supported by AFOSR Award FA9550-11-1-0166 and the Neukom
+Institute for Computational Science.
+
+7. REFERENCES
+[1] S. F. Adafre and M. de Rijke. Discovering missing
+
+links in wikipedia. In Proceedings of the 3rd
+International Workshop on Link Discovery, LinkKDD
+’05, 2005.
+
+[2] A. Agarwal, H. Daume III, and S. Gerber. Learning
+
+multiple tasks using manifold regularization. In NIPS.
+2010.
+
+[3] B. H. Blake Shaw and T. Jebara. Learning a distance
+
+metric from a network. In NIPS, 2011.
+
+[4] R. Caruana. Multitask learning. In Machine Learning,
+
+pages 41–75, 1997.
+
+[5] G. Chechik, V. Sharma, U. Shalit, and S. Bengio.
+
+Large scale online learning of image similarity through
+ranking. Journal of Machine Learning Research,
+11:1109–1135, 2010.
+
+[6] P. M. Comar, P.-N. Tan, and A. K. Jain. Multi task
+
+learning on multiple related networks. In CIKM, 2010.
+
+[7] H. Daum´e, III. Bayesian multitask learning with
+
+latent hierarchies. In UAI, 2009.
+
+

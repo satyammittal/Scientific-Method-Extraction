@@ -1,0 +1,1582 @@
+An Aggressive Margin-Based Algorithm
+
+for Incremental Learning
+
+JuiHsi Fu(cid:2) and SingLing Lee
+
+National Chung Cheng University
+
+168 University Road, Minhsiung Township,
+
+Chiayi 62162, Taiwan, R.O.C.
+
+{fjh95p,singling}@cs.ccu.edu.tw
+
+Abstract. In incremental learning, the classiﬁcation model is incremen-
+tally updated using the small datasets. Diﬀerent with existing methods,
+our approach updates the current classiﬁer according to each sample in
+the dataset, respectively. The classiﬁer is updated by adjusting more
+than the margin of each sample. Then the new classiﬁer is generated
+by carefully analyzing classiﬁer adjustments caused for labeled samples.
+Additionally the new classiﬁer shall correct prediction mistakes of the
+previous classiﬁer as many as possible. In details, we formulate sim-
+ple constrained optimization problems and then the updated classiﬁer is
+the solution derived using Lagrange multipliers. In our experiments, 13
+real-world dataset are used to present the eﬀectiveness of the proposed
+approach. The experimental results are shown that our update strategy
+is able to adjust the classiﬁer properly. And it is also shown that the
+proposed incremental learning approach is suitable to be applied for the
+requirement of frequently adjusting the existing classiﬁers.
+
+Keywords: Incremental Learning, Margin-based Approaches, Passive-
+Aggressive (PA) Algorithm, Period Datasets, Classiﬁer Adjustment.
+
+1
+
+Introduction
+
+Requests of analyzing collected period data have been emerged in recent prac-
+tical applications that includes network traﬃc analysis [1], anomaly detection
+[2], and intrusion detection [3]. Generally, those applications are implemented
+for adjusting classiﬁers/detectors periodically. Most of incremental learning ap-
+proaches have been proposed based on decision-tree [4], neural network [5,6],
+and Support Vector Machines (SVM) [3,7,8,9,10]. Typically they are designed
+to build the statistic classiﬁcation model based on the previously seen samples
+and to correct its prediction mistakes on new labeled samples. While focus-
+ing on the sample space, SVM generalizes the separating hyperplane (classiﬁer)
+based on the whole sample distribution, and maximizes the margins of labeled
+samples (support vectors). The margin of a sample is a distance between the
+sample and the separating hyperplane. And SVM is theoretically proven that
+
+(cid:2) This work is supported by NSC, Taiwan, under grant no. NSC 99-2218-E-492-006.
+
+P.-N. Tan et al. (Eds.): PAKDD 2012, Part I, LNAI 7301, pp. 62–73, 2012.
+c(cid:2) Springer-Verlag Berlin Heidelberg 2012
+
+An Aggressive Margin-Based Algorithm
+
+63
+
+1, xi
+
+2, xi
+
+1
+
+3
+
+the hyperplane is able to well separate samples with diﬀerent labels. In [10],
+an incremental batch SVM approach was designed to update the classiﬁer by
+solving a constrained optimization problem based on each set of collected sam-
+ples. An example is illustrated in Fig. 1 (a) where the classiﬁer wi is adjusted as
+}. This approach should solve a
+wi+1 depending on the set of samples, {xi
+complicated constrained optimization problem since those collected samples are
+adopted simultaneously. Other approaches [8,9] adjusted SVM classiﬁers incre-
+mentally by identifying each new sample as a support vector or not. Diﬀerent
+1 using ﬁrst sample xi
+with [10], in Fig. 1 (b) the classiﬁer wi is adjusted as wi
+in the set, and then wi
+2. Thus wi is incrementally ad-
+justed as wi+1 depending on each sample in the set. The advantage of [8,9] is to
+maintain useful samples that were previously seen as support vectors and to ob-
+tain eﬃcient update steps without solving a constrained optimization problem.
+But in those SVM approaches, the hyperplanes might not be quickly adjusted
+when encountering diverse sample distribution. In other words, the diverse sam-
+ples have small chances to be support vectors because the distribution of those
+samples is signiﬁcantly diﬀerent with the distribution of samples in the set. Thus
+in this paper, our approach is to simplify the constrained optimization problem
+for update steps and to adapt the diverse sample distribution for classiﬁers.
+
+1 is updated as wi
+
+2 using xi
+
+wi
+
+xi
+
+1
+
+xi
+
+2
+
+xi
+
+3
+
+wi+1
+(a) wi
+is ad-
+by
+justed
+all
+samples
+simultaneously.
+
+wi
+
+xi
+
+1
+
+xi
+
+2
+
+xi
+
+3
+
+wi+1
+
+wi
+
+1
+
+wi
+
+2
+
+wi
+
+3
+
+wi
+
+xi
+
+1
+
+xi
+
+2
+
+xi
+
+3
+
+wi+1
+
+Selection
+wi
+
+1
+
+wi
+
+2
+
+wi
+
+3
+
+(b) wi is adjusted incre-
+mentally by each sample.
+
+(c) wi is adjusted by one sam-
+ple in the set.
+
+Fig. 1. Concepts of solving problems of adjusting classiﬁers. wi and wi+1 are the
+current classiﬁer and the next one. xi
+3 are samples used for adjusting wi.
+
+2, and xi
+
+1, xi
+
+Rather than training the SVM classiﬁer based on each sample or each set
+of collected samples, our approach adjusts the current classiﬁer incrementally
+according one sample in each collected set. Thus for each potential update, we
+formulate an optimization problem with single constraint. Additionally our up-
+dated classiﬁer shall correct prediction mistakes of the previous classiﬁer as many
+
+64
+
+J. Fu and S. Lee
+
+1, xi
+
+2, and xi
+
+1, wi
+
+2, and wi
+
+as possible. Compared with [10], we divide a complicated constrained optimiza-
+tion problem into several simpler ones. In other words, the classiﬁer is adjusted
+as several potential ones depending on diﬀerent samples. An example is illus-
+trated in Fig. 1 (c). The classiﬁer wi is adjusted as wi
+3 respectively
+using xi
+3. And then the classiﬁer that adjusts the most wi’s mistakes
+is selected as the next wi+1. In this paper, we are motivated by the simplicity of
+online Passive-Aggressive (PA) algorithm [11]. One sample’s margin is selected
+as the basis for classiﬁer adjustment. Thus in our approach, while a sample is
+used for updating and its sign is incorrectly predicted, the classiﬁer adjustment
+is aggressively achieved within the margin. Additionally the updated classiﬁer
+shall correct prediction mistakes of the previous classiﬁer as many as possible.
+In this paper, we formulate a simple constrained optimization problem for each
+sample and then the candidate updated classiﬁer is the solution derived using
+Lagrange multipliers. It is noted that, we get a closed form solution for each
+potential updated classiﬁer. Particularly the selected new classiﬁer, updated by
+the suitable margin, shall obtain the best classiﬁcation accuracy on the collected
+dataset. It is expected that, this selection strategy is able to avoid the new clas-
+siﬁer being extremely speciﬁc to the previous one. And the updated classiﬁer
+could ﬂexibly adapt the diverse sample distribution because there is no need for
+the proposed approach to maintain previously seen samples.
+
+Basically PA has the ability to frequently update the classiﬁers, but its two
+straightforward approaches may not be able to achieve impressive results. Firstly,
+PA update steps are speciﬁc to each labeled sample whether it is inconsistent
+or not. The consequence is that updated classiﬁers would obtain the unstable
+prediction ability. Secondly, the other PA approach is to update the classiﬁer re-
+spectively using each sample. Then the selected classiﬁer among all updated ones
+shall have the best classiﬁcation accuracy on the collected dataset. Compared
+with our proposed approach, this approach does not actively correct prediction
+mistakes of the previous classiﬁer. Thus these two approaches do not fully uti-
+lize the learning knowledge in each collected dataset. Moreover our approach is
+similar with re-sampling approaches, like bagging [12], to obtain improved classi-
+ﬁcation accuracy by depending on subsets of the sample set. The major diﬀerence
+is that, we focus on designing eﬃcient update steps for online applications so
+that a closed form solution for the updated classiﬁer could be obtained.
+
+The rest of our paper is organized as follows. The online PA algorithm is
+reviewed in Section 2. In Section 3, we detailedly describe the proposed approach
+and build the mathematic model. Experimental results are presented in Section
+4. Finally, we conclude the paper in Section 5.
+
+2 Online Passive-Aggressive Algorithm
+
+In online learning, each training sample is discarded after it is used to update
+the classiﬁers. Some research works like the Perceptron algorithm [13,14,15] and
+margin-based approaches [16,17] have been proven to be eﬀective in a board
+range of applications. Additionally it is worth noting the Passive-Aggressive
+
+An Aggressive Margin-Based Algorithm
+
+65
+
+(PA) Algorithm [11] is a margin-based online learning approach that could be
+applied for various prediction tasks. PA uses linear predictors for label prediction
+of each incoming sample. And each update step of PA is executed depending on
+the margin of the labeled sample. The objective of PA update is to adjust the
+previous classiﬁer as less as possible while the condition of classiﬁer adjustment
+is satisﬁed. At the round t, let wt be the vector of weights, xt be the sample,
+yt ∈ {+1,−1} be xt’s true label, and the term yt(wt· xt) be the signed margin.
+The new classiﬁer wt+1 is the solution to the following constrained optimization
+problem,
+
+wt+1 = argminw∈Rn
+
+l(w, (xt, yt)) = 0,
+
+1
+2
+
+||w − wt||2 s.t.
+(cid:2)
+
+where l(w, (xt, yt)) is the hinge loss of w’s prediction on xt.
+y(w· x) ≥ 1
+0,
+1 − y(w· x), otherwise
+
+l(w, (x, y)) =
+
+(1)
+
+(2)
+
+Typically whenever the loss is zero, PA is passive and wt+1 = wt means no clas-
+siﬁer adjustment. And while the loss is positive (less than 1), wt is aggressively
+updated by adjusting more than the margin, yt(wt· xt), and then the constrain
+l(wt+1, (xt, yt)) = 0 can be satisﬁed. Then the Lagrangian of the optimization
+problem in Eq. (1) is deﬁned as Eq. (3).
+
+L(w, τ ) =
+
+1
+2
+
+||w − wt||2 + τ (1 − yt(w· xt))
+
+(3)
+
+Let the partial derivation of l with respect to w be zero and then let the deviation
+of τ with respect to τ be zero, we have
+
+w = wt + τ ytxt
+||xt||2
+
+1 − yt(wt· xt)
+
+τ =
+
+Ultimately the PA update is performed by solving the constrained optimization
+problem in Eq. (1). And it is theoretically shown that the aggressive update
+strategy of PA modiﬁes the weight vector as less as possible. The eﬀectiveness
+of PA in solving problems of classiﬁcation and regression is formally analyzed in
+[11]. Based on this well-deﬁned learning model of PA, several online algorithms
+[18,19] have been proposed for adding conﬁdence information and handling non-
+separable data.
+
+3
+
+Incremental Passive-Aggressive Learning Algorithm
+
+While each set of labeled period samples comes, the existing classiﬁer shall be
+periodically updated for adapting the latest sample distribution. In this pa-
+per, we propose an incremental learning algorithm, named Incremental Passive-
+Aggressive (IPA). It adjusts the current classiﬁer incrementally using one sample
+
+66
+
+J. Fu and S. Lee
+
+in each collected set. For each potential sample, there are two update steps in
+IPA: 1) to correct prediction mistakes of the current classiﬁer, and 2) to ag-
+gressively update the current classiﬁer by adjusting more than the margin. At
+last, the error minimization classiﬁer on the collected dataset is selected as the
+next classiﬁer. Before formulating the model of the proposed approach, we de-
+ﬁne some notations. Given the labeled dataset K t collected at the round t, there
+are |K t| sample-label pairs, {(x1, y1), ..., (x|K t|, y|K t|)}. wt is the classiﬁer at the
+round t, the vector of weights. When using each labeled sample xk ∈ K t, the
+updated classiﬁer wt+1 shall correct mistakes of the previous classiﬁer wt as
+many as possible and wt shall be adjusted as less as possible. Aggressively, if xk
+obtains the incorrect predicted sign from wt, then the adjustment for wt should
+be achieved within more than xk’s margin. Thus these update steps to wt are
+formulated as the constrained optimization problem,
+
+||w − wt||2
+f (wt, (xk, yk), K t) = argminw∈Rn{ 1
+2
+l(w, (xi, yi))}
+
+(cid:3)
+
++ C0
+
+xi∈K t,xi(cid:4)=xk
+
+s.t. l(w, (xk, yk)) = 0,
+
+(4)
+
+where C0 is a constant to control the tradeoﬀ between the classiﬁer deviation and
+the corrected prediction mistakes, and l(w, (xi, yi)) is the hinge loss function.
+Furthermore, after wt is updated using every sample xk ∈ K t according to Eq.
+(4), those updated classiﬁers, {f (wt, (xk, yk), K t) : 1 ≤ k ≤ |K t|}, are the candi-
+dates for the new classiﬁer. In order to avoid the new classiﬁer being extremely
+speciﬁc to the current classiﬁer, the selection strategy is to ﬁnd the proper clas-
+siﬁer which has the most accurate classiﬁcation performance on K t. When more
+than one updated classiﬁers have the highest classiﬁcation accuracy, we select
+the updated classiﬁer which has the smallest diﬀerence with wt. Hence the new
+classiﬁer wt+1, selected among the candidate set of the updated classiﬁers, is the
+solution to the optimization problem,
+
+wt+1 = argminw∈{f (wt,(xk,yk),K t) : 1≤k≤|K t|}C
+
+(cid:3)
+xi∈K t
+
+l(w, (xi, yi)) + ||w − wt||,
+
+(5)
+where C is a large constant in order to select w strongly depending on the errors.
+
+To solve the problem in Eq. (4), let C0 = 1 and κt, the subset of |K t|, be
+the set of samples of which predicted labels are incorrectly decided by wt. While
+the loss of each sample in κt is positive (less than 1), the Lagrangian of the
+constrained optimization problem is deﬁned as Eq. (6):
+
+(1 − yi(w· xi)) + τ (1 − yk(w· xk))
+
+(6)
+
+L(w, τ ) =
+
+||w − wt||2 +
+
+1
+2
+
+(cid:3)
+
+xi∈κt,xi(cid:4)=xk
+
+An Aggressive Margin-Based Algorithm
+
+67
+
+Let the partial derivation of l with respect to w be zero,
+
+(cid:2)wL(w, τ ) = w − wt −
+
+yixi − τ ykxk
+
+(cid:3)
+
+(cid:3)
+xi∈κt,xi(cid:4)=xk
+
+=> w = wt +
+
+yixi + τ ykxk
+
+(7)
+
+xi∈κt,xi(cid:4)=xk
+
+Then substituting Eq. (7) into Eq. (6), we have
+
+(cid:3)
+(cid:3)
+xi∈κt
+
+L(τ ) =
+
+||
+
+1
+2
+
++
+
+(cid:3)
+
+yixi + τ ykxk||2
+(1 − yi((wt +
+(cid:3)
+
+xi∈κt,xi(cid:4)=xk
+
+xi∈κt,xi(cid:4)=xk
+
++ τ (1 − yk((wt +
+
+xi∈κt,xi(cid:4)=xk
+yixi + τ ykxk)· xk))
+
+yixi + τ ykxk)· xi))
+
+At last let the deviation of Eq. (8) with respect to τ be zero,
+
+0 = −τ y2
+
+k||xk||2 + (1 − yk(wt· xk)) − ykxk
+
+(cid:4)
+1 − yk(wt· xk) − ykxk
+||xk||2
+
+=> τ =
+
+xi∈κt,xi(cid:4)=xk yixi
+
+(cid:3)
+
+yixi
+
+xi∈κt,xi(cid:4)=xk
+
+(8)
+
+(9)
+
+Ultimately, each update of the proposed incremental learning algorithm is per-
+formed by solving the constrained optimization in Eq. (4) and the updated clas-
+siﬁer is determined by solving Eq. (5). It is theoretically presented in Eq. (7)
+and (9) that the update to the current classiﬁer wt is performed by correcting its
+prediction mistakes κt, and by adjusting it within the margin when the sample is
+incorrectly predicted. Overall the proposed algorithm is presented in Algorithm
+1. At each round t, the dataset K t is collected to update the current classiﬁer
+wt. And the samples of which predicted labels are incorrectly assigned by wt are
+identiﬁed as κt, at line 4-5. Then for each sample xk ∈ K t, the current classiﬁer
+wt is individually updated as the candidate classiﬁer wk according to Eq. (7)
+and (9), at line 7-8. At last, the classiﬁer wk is selected as wt+1 if it gains the
+least prediction errors on K t, at line 10. Particularly at the ﬁrst round, w1 is
+initialized as (0, ..., 0) and its prediction result is always positive. Thus the w1 is
+adjusted as the ﬁrst updated classiﬁer w2 depending on the false positive sample
+that could cause the minimum ||w2 − w1||. Moreover in addition to minimizing
+the classiﬁer deviation, we correct mistakes of the previous classiﬁer. In terms of
+convergence, each classiﬁer is adjusted as small as possible. Also it is expected
+that, our approach is able to adaptively enhance the degree of adjusting classi-
+ﬁers when encountering diverse sample distribution that would cause signiﬁcant
+prediction losses.
+
+68
+
+J. Fu and S. Lee
+
+Algorithm 1. Incremental PA Learning Algorithm
+
+input : C0
+Initialize: w1 = (0, ..., 0), C = 10, 000 ;
+for t=1,2,... do
+
+receive the collected labeled dataset K t ;
+predict (cid:2)yx=sign(wt· xk) for each xk ∈ K t ;
+collect κt = {xk|xk ∈ K t and yx (cid:3)= (cid:2)yx} ;
+for each xk ∈ K t do
+
+1−yk (wt·xk)−ykxk
+
+(cid:2)
+||xk||2
+
+set τk =
+update wk = wt +
+
+xi∈κt ,xi(cid:3)=xk
+
+yixi
+
+;
+
+(cid:3)
+
+xi∈κt,xi(cid:3)=xk yixi + τ ykxk ;
+
+end
+select wt+1 = argminw∈{wk : 1≤k≤|Kt|}C
+
+(cid:3)
+
+xi∈Kt l(w, (xi, yi)) + ||w − wt|| ;
+
+end
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+4 Experiments
+
+In this section, our experiments are designed to present the performance of our
+approach in classiﬁcation accuracy while the classiﬁer is incrementally updated
+by several small training sets. To present the eﬀectiveness of updating classiﬁers
+in our approach, we also implement the online PA and an incremental batch
+SVM [9]. Additionally in order to show the eﬀectiveness of correcting mistakes
+of the previous classiﬁer in eq. (4), the performance of our approach with C0 = 0
+is also compared in following experiments. In terms of evaluating classiﬁcation
+accuracy of a classiﬁer, we would like to signiﬁcantly present classiﬁcation results
+of samples in two diﬀerent classes. We use the measurement of micro-average ac-
+curacy to average the classiﬁcation accuracies that are calculated in two classes,
+respectively. For consistence, the summations of loss errors in the eq. (4) and (5)
+are also revised as (1 - micro-average accuracy).
+
+Table 1 presents 13 real-world data collections from 4 diﬀerent sources used in
+our experiments. The multi-domain sentiment dataset 1 contains product reviews
+downloaded from Amazon.com from four product types (domains): Kitchen,
+Books, DVDs, and Electronics. Each domain has several thousand reviews, but
+the exact number varies by domain. In this experiment, only Books, DVDs are
+used for evaluating performance of those learning approaches. From the second
+data source, the dataset at ECML/PKDD-2006 discovery challenge 2 is used to
+decide whether received emails are spam or non-spam. Especially there are over
+10,000 features in those three datasets, Books, DVDs, and Emails. But it is dif-
+ﬁcult to analyze performance of the SVM classiﬁers implemented in Matlab [9]
+because the execution is time consuming on those high dimensional datasets.
+Thus we randomly select a part of documents, as presented in Tab. 1, in fol-
+lowing experiments. From the third data source, Spamming Bots [20] is the
+set of response codes of the sent emails, collected in National Chung Cheng
+
+1 Sentiment. http://www.cs.jhu.edu/ mdredze/datasets/sentiment/
+2 ECML/PKDD-2006. http://www.ecmlpkdd2006.org/challenge.html
+
+Table 1. 10 real-world datasets: sizes of the classes and the size of feature dimensions
+
+An Aggressive Margin-Based Algorithm
+
+69
+
+Source
+Dataset
+Sentiment
+DVDs
+Sentiment
+Books
+ECML/PKDD spam(210)
+Emails
+UCI
+Connectionist Bench
+UCI
+Ionosphere
+UCI
+German
+Australian Credit Approval UCI
+UCI
+Statlog (Heart)
+UCI
+yeast
+UCI
+abalone
+Pima Indians Diabetes
+UCI
+UCI
+ecoli
+Spamming Bots
+CCU
+
+60
+1(111)
+34
+b(126)
+23
+Good(700)
+14
+0(383)
+13
+1(150)
+9
+CYT(463) ME1(44)
+8
+10(634)
+8
+0(500)
+cp(143)
+8
+normal(1560) spamming(150) 5
+
+4(57)
+1(268)
+im(77)
+
+Class(size)
+
+Class(size)
+positive(292) negative(300)
+positive(289) negative(287)
+
+Dimensions
+1488
+1548
+non-spam(445) 1034
+2(97)
+g(225)
+Bad(300)
+1(307)
+2(120)
+
+University (CCU). It is used to analyze the behavior of each email sender and
+then to detect the spamming bots. At last the other datasets are the benchmarks
+in the UCI repository 3. While we evaluate classiﬁcation performance of learning
+approaches, we randomly divide each dataset into 10 subsets, and one of subsets
+is received at each round. In other words, one subset is used for initially training
+the classiﬁer and deciding the value of C0 in eq. (4) by obtaining the highest
+classiﬁcation accuracy on the ﬁrst subset. Then others are received at each of
+9 rounds. The classiﬁcation accuracy at each round is measured by classiﬁca-
+tion results of the classiﬁer updated at previous rounds. To reduce variability in
+experimental results, we arrange 10 subset-round permutations on each dataset
+and average those 10 classiﬁcation accuracies at each round.
+
+At ﬁrst these experiments, except on Diabetes in Fig. 2, are demonstrated
+that the proposed IPA has better performance than IPA with C0 = 0. That
+means, in addition to minimizing the classiﬁer deviation, it is eﬀective in eq.
+(4) to correct mistakes for updating the previous classiﬁer. And on Diabetes,
+correction of mistakes to the classiﬁer could not improve the classiﬁcation ac-
+curacy on latter samples. It seems, on Diabetes previous learning knowledge is
+not useful for latter label prediction. Secondly on Australian, Ionosphere, Bots,
+and 10+4 in Fig. 3-4, it is presented that the online PA method can not obtain
+the remarkable classiﬁcation performance since its update strategy is speciﬁc to
+each labeled sample. That means, the online PA method tends to be updated
+by inconsistent samples. Furthermore, except experimental results on Australian
+and Ionosphere in Fig. 3, it is shown that our approach obtains the best (or
+similar) classiﬁcation accuracy in comparison with other approaches. We update
+the classiﬁer by carefully analyzing classiﬁer adjustment caused for the labeled
+dataset. Then the remarkable classiﬁcation accuracy is obtained at each round
+after the classiﬁer is incrementally updated on most of datasets. Also it is shown
+
+3 UCI Repository. http://archive.ics.uci.edu/ml/
+
+70
+
+J. Fu and S. Lee
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+80
+
+75
+
+70
+
+65
+
+60
+
+55
+55
+
+50
+
+45
+
+40
+
+Diabetes
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=0.25
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+rounds
+
+Fig. 2. Classiﬁcation results of incremental learning approaches on Diabetes
+
+Australian
+
+Ionosphere
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+95
+
+90
+
+85
+
+80
+
+75
+
+70
+
+65
+
+60
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=1
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+y
+c
+a
+r
+u
+c
+c
+a
+
+95
+
+90
+
+85
+
+80
+
+75
+
+70
+
+65
+
+60
+
+55
+
+50
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=0.75
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+rounds
+
+rounds
+
+Fig. 3. Classiﬁcation results of incremental learning approaches on Australian and
+Ionosphere
+
+spamming bot detection
+
+10+4
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+100
+95
+90
+85
+80
+75
+70
+70
+65
+60
+55
+50
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=1
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+100
+95
+90
+85
+80
+75
+70
+70
+65
+60
+55
+50
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=0.25
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+rounds
+
+rounds
+
+Fig. 4. Classiﬁcation results of incremental learning approaches on bot and 10+4
+
+that our approach has the ability to adapt the diverse sample distribution for
+classiﬁers because we obtain better performance in accuracy than the SVM ap-
+proach of which support vectors are maintained as informative samples. Mention
+to the performance on Australian and Ionosphere, it seems ambiguous or noise
+samples exist so that the approaches (PA and IPA) to incrementally update the
+classiﬁer by one sample do not have impressive results. In this case, collected
+samples in the set might be simultaneously used for updating classiﬁers, like the
+incremental batch SVM, to ﬁlter out misleading or noise samples.
+
+An Aggressive Margin-Based Algorithm
+
+71
+
+Heart
+
+Connectionist
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+100
+
+90
+
+80
+
+70
+
+60
+
+50
+
+40
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=1
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+90
+
+85
+
+80
+
+75
+
+70
+
+65
+65
+
+60
+
+55
+
+50
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=0.5
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+rounds
+
+rounds
+
+Fig. 5. Classiﬁcation results of incremental learning approaches on heart and Connec-
+tionist
+
+BOOK
+
+DVD
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+70
+
+65
+
+60
+
+55
+
+50
+
+45
+
+40
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=1
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+80
+
+75
+
+70
+
+65
+
+60
+
+55
+
+50
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=0.75
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+rounds
+
+rounds
+
+Fig. 6. Classiﬁcation results of incremental learning approaches on BOOK and DVD
+
+CYT+MEI
+
+cp+im
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+100
+95
+90
+85
+80
+75
+70
+70
+65
+60
+55
+50
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=0.1
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+100
+95
+90
+85
+80
+75
+70
+70
+65
+60
+55
+50
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=1
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+rounds
+
+rounds
+
+Fig. 7. Classiﬁcation results of incremental learning approaches on CYT+ME1 and
+cp+im
+
+Interestingly on CYT+MEI, cp+im, German, and Emails in Fig. 7-8, the
+incremental batch SVM approach has biased results. It is observed that, in es-
+timating performance of the classiﬁer, it focuses on non-weighting estimated
+errors, instead of average weights for errors on two respective classes. Still on
+those datasets, proposed IPA has the practical ability to obtain the best clas-
+siﬁcation accuracy. Hence, our approach to update classiﬁers is not aﬀected by
+biased classiﬁcation results.
+
+72
+
+J. Fu and S. Lee
+
+German
+
+EMAIL
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+80
+
+75
+
+70
+
+65
+
+60
+
+55
+55
+
+50
+
+45
+
+40
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=0.5
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+y
+c
+a
+r
+u
+c
+c
+c
+a
+
+80
+
+75
+
+70
+
+65
+
+60
+
+55
+
+50
+
+Online(cid:3)PA
+
+IPA(cid:3)C0=0
+
+IPA(cid:3)C0=0.25
+
+Incremental(cid:3)Batch(cid:3)SVM
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+rounds
+
+rounds
+
+Fig. 8. Classiﬁcation results of incremental learning approaches on German and Emails
+
+5 Conclusion
+
+In this paper, we propose an eﬃcient incremental learning approach to deal
+with the practical requirement of frequently updating classiﬁers. Our approach is
+proposed to adjust the classiﬁer incrementally using one sample in each collected
+set. That is, the classiﬁer is aggressively updated by adjusting more than the
+margin of a sample, and its prediction mistakes are corrected as more as possible.
+For each potential update step, we get a closed form solution for the updated
+classiﬁer through solving a simple constrained optimization problem. At last the
+selected classiﬁer shall have the least prediction errors on the collected dataset.
+Our experimental results are presented that, when updating a classiﬁer, it is
+eﬀective to correct its prediction mistakes, in addition to minimizing the classiﬁer
+deviation. And it is also shown that our approach has the ability to adapt the
+diverse sample distribution for classiﬁers. Except several datasets that consist of
+some misleading or noise samples, the classiﬁer that is incrementally adjusted
+by our approach is able to gain remarkable classiﬁcation accuracy. Therefore it
+is presented that the proposed approach is suitable to be applied for eﬀectively
+adjusting the existing classiﬁers using periodically collected datasets.
+
+References
+
+1. Sena, G.G., Belzarena, P.: Early traﬃc classiﬁcation using support vector machines.
+In: 5th International Latin American Networking Conference, pp. 60–66. ACM,
+New York (2009)
+
+2. Robertson, W.K., Maggi, F., Kruegel, C., Vigna, G.: Eﬀective Anomaly Detection
+with Scarce Training Data. In: The Network and Distributed System Security
+Symposium. ISOC (2010)
+
+3. Du, H., Teng, S., Yang, M., Zhu, Q.: Intrusion Detection System Based on Improved
+SVM Incremental Learning. In: International Conference on Artiﬁcial Intelligence
+and Computational intelligence, pp. 23–28. IEEE Press (2009)
+
+4. Utgoﬀ, P.E.: Incremental Induction of Decision Trees. J. Machine Learning 4, 161–
+
+186 (1989)
+
+5. Mohamed, S., Rubin, D., Marwala, T.: Incremental Learning for Classiﬁcation of
+Protein Sequences. In: International Joint Conference on Neural Networks, pp.
+19–24. IEEE Press (2007)
+
+An Aggressive Margin-Based Algorithm
+
+73
+
+6. Chen, Z., Huang, L., Murphey, Y.L.: Incremental Learning for Text Document
+Classiﬁcation. In: International Joint Conference on Neural NetWorks, pp. 2592–
+2597. IEEE Press (2007)
+
+7. Ruping, S.: Incremental Learning with Support Vector Machines. In: International
+
+Conference on Data Mining, pp. 641–642. IEEE Press (2001)
+
+8. Xiao, R., Wang, J., Zhang, F.: An Approach to Incremental SVM Learning Algo-
+rithm. In: International Conference on Tools with Artiﬁcial Intelligence, pp. 268–
+273. IEEE Press (2000)
+
+9. Cauwenberghs, G., Poggio, T.: Incremental and Decremental Support Vector Ma-
+chine Learning. In: Neural Information Processing Systems, vol. 13. MIT Press,
+Cambridge (2001)
+
+10. Liu, Y., He, Q., Chen, Q.: Incremental Batch Learning with Support Vector Ma-
+chines. In: 5th World Congress on Intelligent Control and Automation, pp. 1857–
+1861. IEEE Press (2004)
+
+11. Crammer, K., Dekel, O., Keshet, J., Shwartz, S.S., Singer, Y.: Online Passive-
+
+Aggressive Algorithms. J. Machine Learning Research 7, 551–585 (2006)
+
+12. Zhu, X.: Lazy Bagging for Classifying Imbalanced Data. In: 7th IEEE International
+
+Conference on Data Mining, pp. 763–768 (2007)
+
+13. Freund, Y., Schapire, R.E.: Large Margin Classiﬁcation Using the Perceptron Al-
+
+gorithm. J. Machine Learning 37, 277–296 (1999)
+
+14. Ng, H.T., Goh, W.B., Low, K.L.: Feature selection, perceptron learning, and a us-
+ability case study for text categorization. In: International Conference on Research
+and Development in Information Retrieval, pp. 67–73. ACM, New York (1997)
+
+15. Cesa-Bianchi, N., Conconi, A., Gentile, C.: A Second-Order Perceptron Algorithm.
+
+J. Computing 34(3), 640–668 (2005)
+
+16. Wang, S., San, Y., Wang, S.: An Online Modeling Method Based on Support
+Vector Machine. In: International Conference on COmputer Science and Software
+Engineering, pp. 98–101. IEEE Press (2008)
+
+17. Sculley, D., Wachman, G.M.: Relaxed Online SVMs for spam ﬁltering. In: Inter-
+national Conference on Research and Development in Information Retrieval, pp.
+415–422. ACM, New York (2007)
+
+18. Dredze, M., Crammer, K., Pereira, F.: Conﬁdence-Weighted Linear Classiﬁcation.
+In: International Conference on Machine Learning, pp. 264–271. ACM, New York
+(2008)
+
+19. Crammer, K., Kulesza, A., Dredze, M.: Adaptive Regularization of Weight Vectors.
+
+In: Neural Information Processing Systems. MIT Press, Cambridge (2009)
+
+20. Lin, P., Yen, T., Fu, J., Yu, C.: Analyzing Anomalous Spamming Activities in a
+
+Campus Network. In: TANET (2011)
+
+

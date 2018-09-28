@@ -1,0 +1,998 @@
+A Concept-Drifting Detection Algorithm
+
+for Categorical Evolving Data
+
+Fuyuan Cao1,2 and Joshua Zhexue Huang1
+
+1 Shenzhen Key Laboratory of High Performance Data Mining,
+
+Shenzhen Institutes of Advanced Technology, Chinese Academy of Sciences,
+
+2 Key Laboratory of Computational Intelligence and Chinese Information Processing
+
+Shenzhen 518055, China
+
+of Ministry of Education, the School of Computer and Information Technology,
+
+Shanxi University, Taiyuan 030006, China
+cfy@sxu.edu.cn, zx.huang@siat.ac.cn
+
+Abstract. In data streams analysis, detecting concept-drifting is a very
+important problem for real-time decision making. In this paper, we pro-
+pose a new method for detecting concept drifts by measuring the dif-
+ference of distributions between two concepts. The diﬀerence is deﬁned
+by approximation accuracy of rough set theory, which can also be used
+to measure the change speed of concepts. We propose a concept-drifting
+detection algorithm and analyze its complexity. The experimental re-
+sults on a real data set with a half million records have shown that the
+proposed algorithm is not only eﬀective in discovering the changes of
+concepts but also eﬃcient in processing large data sets.
+
+Keywords: Categorical Data, Evolving, Concept-drifting.
+
+1
+
+Introduction
+
+Many real world applications generate continuously arriving data, such as busi-
+ness transactions, web logs, sensors networks, etc. This type of data is known
+as data streams [1]. Generally speaking, a data stream can be considered as a
+sequence of items of structural information in which each item is stamped with
+a time point. As the arrival items change with time, the data distribution of the
+underlying structural information may change as well. Usually, the cause of the
+change is unknown. To understand the behaviors of data streams, it is important
+to investigate the changes of the distributions and the causes of the changes.
+
+Semantically, the distribution of the structural information at a particular
+time point in a data stream is referred to as representation of a concept. A
+concept is deﬁned by its intension and extension. Intension is the representation
+schema of structural information while extension refers to the set of objects
+represented by the schema. A concept often contains a set of sub-concepts. In
+machine learning, we can learn the intensions of concepts or sub-concepts from
+a set of objects. In supervised learning, every object is labeled with a class in
+the target variable. The set of objects in the same class is referred to as a sub-
+concept. In unsupervised learning, the classes of objects can be obtained with a
+clustering algorithm. In this case, a cluster is a sub-concept.
+
+J. Pei et al. (Eds.): PAKDD 2013, Part II, LNAI 7819, pp. 485–496, 2013.
+c(cid:2) Springer-Verlag Berlin Heidelberg 2013
+
+486
+
+F. Cao and J.Z. Huang
+
+As the arrival items change over time, the change of data distribution can
+be used to induce the change of a concept. In real applications, the change of
+a concept is mainly caused by emerging new sub-concepts or fading old sub-
+concepts or both. A radical change of a concept is often known as concept drift
+[2]. Two kinds of concept drift are illustrated in literature [3]. One is sudden
+(abrupt) concept drift and the other is gradual concept drift. Sudden concept
+drift is described as that the data distribution is dramatically changed in a
+short time period. Gradual concept drift is considered that the change of a
+concept occurs gradually over time. For example, in social network analysis,
+diﬀerent groups of people are interested in diﬀerent topics. Some people may
+gradually change their interests from one topic to another over time and some
+may suddenly change their interests to new topics.
+
+To investigate the behaviors of such data streams, we concern whether the
+concept at time t2 has drifted from the concept at time t1, where t2 > t1.
+Meantime, we are interested in the change speed of concepts.
+
+In this paper, we propose a new method to measure the diﬀerence between
+two concepts at the diﬀerent time points. This diﬀerence is deﬁned by approx-
+imation accuracy of rough set theory. Based on the new measure, we propose
+a concept-drifting detection algorithm to detect whether a concept has drifted
+or not. We have conducted a series of experiments on the KDD-CUP’99 data.
+The experimental results have demonstrated the proposed algorithm is not only
+eﬀective in discovering the changes of concepts but also eﬃcient in processing
+large data sets.
+
+2 Preliminaries
+
+In this section, we ﬁrst review the basic concepts in rough set theory [4], such
+as indiscernibility relation, lower and upper approximations, approximation ac-
+curacy that are used to deﬁne the measures of concept change. We then deﬁne
+the problem of concept-drifting in the categorical time-evolving data.
+
+2.1 Some Basic Concepts of Rough Set Theory
+
+In a relational database, the structural data is stored in a table, where each row
+represents an object and each column represents an attribute that describes the
+objects. Formally, a data table can be deﬁned as a quadruple DT = (U, A, V, f ),
+where U is a nonempty set of objects called the universe and A is a nonempty
+set of attributes such that for any x ∈ U and a ∈ A, f (x, a) ∈ Va. V =
+a∈A Va
+is the union of all attribute domains. If V is represented by continuous values,
+then DT is called a numerical data table. For any a ∈ A, if Va is ﬁnite and
+unordered, then DT is called a categorical data table. Unless otherwise speciﬁed,
+DT represents a categorical data table in this paper.
+Let DT be a categorical data table deﬁned on A and P ⊆ A. P deﬁnes an
+
+(cid:2)
+
+equivalence relation IN D(P ) as:
+
+IN D(P ) = {(x, y) ∈ U × U|∀a ∈ P, f (x, a) = f (y, a)}.
+
+(1)
+
+A Concept-Drifting Detection Algorithm for Categorical Evolving Data
+
+487
+
+(cid:3)
+
+IN D(P ) is also called the indiscernibility relation with respect to P . If (x, y) ∈
+IN D(P ), the objects x and y are said to be indiscernible from each other by the
+attributes from P . It is easy to show that IN D(P ) is an equivalence relation on
+a∈P IN D({a}). The relation IN D(P ) induces a partition of
+U and IN D(P ) =
+U , denoted by U/IN D(P ) = {[x]P|x ∈ U}, where [x]P denotes the equivalence
+class determined by x with respect to P , i.e., [x]P = {y ∈ U|(x, y) ∈ IN D(P )}.
+As any equivalence relation induces a partition of the universe, these partitions
+can be used to build new subsets of the universe. These notions can be formally
+expressed as follows.
+Let DT = (U, A, V, f ) be a categorical data table, P ⊆ A and X ⊆ U . One
+can approximate X using only the information in P by constructing the lower
+approximation and the upper approximation of X, denoted as P X and P X
+respectively, where P X = {x|[x]P ⊆ X} and P X = {x|[x]P
+
+X (cid:5)= ∅}.
+
+(cid:3)
+
+The objects in P X can be classiﬁed with certainty as members of X on the
+basis of knowledge in P , while the objects in P X can only be classiﬁed as possible
+members of X. The set BNP (X) = P X − P X is called the P -boundary region
+of X, and consists of those objects that cannot be decisively classiﬁed into X
+on the basis of knowledge in P . The set U − P X is called the P -outside region
+of X and consists of those objects which can not belong to X certainly. A set is
+said to be rough if the boundary region is non-empty.
+
+A rough set can be characterized numerically by the following term
+
+|P X|
+|P X| .
+
+αP (X) =
+
+(2)
+which is called the approximation accuracy, where |X| denotes the cardinality
+of X (cid:5)= ∅. Obviously, 0 ≤ αP (X) ≤ 1. If αP (X) = 1, X is said to be crisp with
+respect to P , i.e., X is precise with respect to P . Otherwise, if αP (X) < 1, X is
+said to be rough with respect to P , i.e., X is vague with respect to P .
+
+2.2 Problem Statement
+
+Similarly, a categorical time-evolving data can also be stored in a table. For-
+mally, a categorical time-evolving data table [5] can be formulated as a quin-
+tuple T DT = (U, A, V, f, t) , where U , A and V are the same as those in DT .
+The information function f : U × A × t → V is a mapping such that for any
+x ∈ U and a ∈ A, f (x, a, t) ∈ Va, where t is the arriving time of object x. As the
+arrival objects change with time, concepts often change at diﬀerent time points.
+In order to detect the change of concepts, we adopt the sliding window technique
+which is used in the numerical data streams [6–8] to partition a categorical time-
+evolving data table. Suppose that N is the sliding window size, then the T DT
+is separated into several continuous subsets STi (1 ≤ i ≤ (cid:9) U
+N (cid:10)) and each subset
+STi has N objects. Each subset can also be called a concept. The superscript
+number Ti is the identiﬁcation number of the sliding window and Ti is also called
+timestamp. In this work, our goal is to detect the diﬀerence between STi+1 and
+STi and analyze the speed of the diﬀerence.
+
+488
+
+F. Cao and J.Z. Huang
+
+3 Concept-Drifting Detecting
+
+In this section, we deﬁne the lower approximation and upper approximation of
+a set Y with respect to a data set X instead of a universe U in rough set theory.
+To enable quantitative analysis of concept drifting for categorical evolving data,
+we formulate a set of measures for changes of concepts, including the degrees
+and speeds of a new concept emerging and a old concept emerging as well as the
+speed of change between two concepts.
+
+3.1 Measures of Concepts Changes
+
+To formulate the change of a concept, we deﬁne the lower approximation and
+upper approximation of a set as
+
+Deﬁnition 1. Let T DT = (U, A, V, f, t) be a categorical time-evolving data ta-
+ble, P ⊆ A and X ⊆ U . For any Y ⊆ X and x ∈ X, the lower approximation
+and upper approximation of Y with respect to X are deﬁned as
+
+P Y = {x|[x]P ⊆ Y }
+
+(3)
+
+and
+
+(cid:4)
+
+P Y = {x|[x]P
+where [x]P = {y ∈ X|(x, y) ∈ IN D(P )}.
+Here, the lower approximation and upper approximation of Y are deﬁned with
+respect to X, not to the universe U .
+
+Y (cid:5)= ∅},
+
+(4)
+
+Given a categorical data steam that carries a set of concepts at diﬀerent time
+points, at a particular time point, a concept contains a set of sub-concepts and
+the concept changes as sub-concepts change over time. For example, in social
+media data streams, a topic may consist of several subtopics at a given time point
+and the topic changes as a new subtopic emerges or an old subtopic disappears
+at the following time points. We use an intuitive example in Fig.1 to illustrate
+three types of concept change.
+
+Assume the two rectangles in each sub ﬁgure of Fig.1 represent a concept at
+two consecutive time points t1 and t2 from left to right. Each rectangle contains
+two or three sub-concepts described by circles in diﬀerent colors. Fig.1(a) shows
+the yellow sub-concept emerged at t2 after t1. Fig.1(b) shows yellow sub-concept
+disappeared at t2 from the concept. In Fig.1(c), two old sub-concepts faded and
+two new sub-concepts emerged.
+
+Using the deﬁnitions of lower approximation and upper approximation in
+Deﬁnition 1, we deﬁne the measures for degrees and speeds of new concept
+emerging and old concept fading in categorical evolving data as follows.
+
+Deﬁnition 2. Let T DT = (U, A, V, f, t) be a categorical time-evolving data table
+and STi, STj ⊆ U , where STi
+STj . The new
+
+STj = ∅ and S[Ti,Tj ] = STi
+
+(cid:3)
+
+(cid:2)
+
+A Concept-Drifting Detection Algorithm for Categorical Evolving Data
+
+489
+
+(a) New concept emerging
+
+(b)Old concept fading
+
+(c) Dual occurring
+
+Fig. 1. Three types of concept change
+
+concepts emerging degree and old concepts fading degree from STi to STj with
+respect to A are deﬁned as
+
+and
+
+where
+
+N EDA < STi, STj > = 1|A|
+
+(cid:5)
+
+a∈A N ED{a} < STi , STj >
+
+OF DA < STi, STj > = 1|A|
+
+(cid:5)
+
+a∈A OF D{a} < STi, STj >,
+
+(5)
+
+(6)
+
+N ED{a} < STi, STj >=
+
+OF D{a} < STi , STj >=
+
+|{a}STj|
+|{a}STj| ,
+|{a}STi|
+|{a}STi| .
+
+Here, {a}STm(m = i, j) represents the lower approximation of STm in S[Ti,Tj ]
+with respect to attribute a, and {a}STm(m = i, j) represents the upper approxi-
+mation of STm in S[Ti,Tj ] with respect to attribute a.
+
+N EDA < STi , STj > and OF DA < STi, STj > are used to measure the degrees
+of concept change between two consecutive time points. The higher the value of
+N EDA < STi , STj > or OF DA < STi , STj > is, the more dramatic the change
+of a concept from STi to STj , either a sub-concept emerged or faded.
+
+According to Eq.(1), the degree of a concept change with respect to an at-
+tribute a, N ED{a} < STi , STj > or OF D{a} < STi, STj > equals to 1 if
+S[Ti,Tj ]/IN D({a}) = {X|X = {u}, u ∈ S[Ti,Tj ]}. The degree of a concept change
+with respect to an attribute a equals to 0 if S[Ti,Tj ]/IN D({a}) = {X|X = S[Ti,Tj ]}.
+In other situations, 0 < N ED{a} < STi, STj >, OF D{a} < STi , STj > < 1.
+Therefore, we have 0 ≤ N EDA < STi , STj >, OF DA < STi , STj > ≤ 1.
+
+The speed of concept drifting was used [9]. In this paper, we use speed to
+measure the amount of concept change from t1 to t2. The speeds of new concept
+emerging and old concept fading are deﬁned as follows.
+
+490
+
+F. Cao and J.Z. Huang
+
+Deﬁnition 3. Let T DT = (U, A, V, f, t) be a categorical time-evolving data table
+and STi, STj ⊆ U , where STi
+STj . The new
+concepts emerging speed and old concepts fading speed from STi to STj with
+respect to A are deﬁned as
+
+STj = ∅ and S[Ti,Tj ] = STi
+
+(cid:3)
+
+(cid:2)
+
+N ESA < STi , STj > = N EDA < STi , STj > × |STj|
+
+tj
+
+and
+
+OF SA < STi, STj > = OF DA < STi, STj > × |STi|
+
+ti
+
+.
+
+where
+
+|STm|
+tm (m = i, j) represents the ﬂowing speed of objects.
+
+(7)
+
+(8)
+
+By considering the degrees of new concept emerging and old concept fading
+together, we deﬁne the degree and speed of change between two concepts as:
+
+Deﬁnition 4. Let T DT = (U, A, V, f, t) be a categorical time-evolving data table
+and STi, STj ⊆ U , where STi
+STj . The degree and
+speed of change between STi and STj with respect to A are deﬁned respectively
+as
+
+STj = ∅ and S[Ti,Tj ] = STi
+
+(cid:3)
+
+(cid:2)
+
+CDA(STi , STj ) =
+
+N EDA<STi ,STj >+OF DA<STi ,STj >
+
+and
+
+CSA(STi , STj ) = CDA(STi , STj ) × |S[Ti,Tj ]|
+
+ti+tj
+
+.
+
+It is easy to prove that CDA(STi , STj ) is a metric.
+
+2
+
+(9)
+
+(10)
+
+Property 1. Let T DT = (U, A, V, f, t) be a categorical time-evolving data table.
+For any STi, STj , STk ⊆ U , where STi
+(1) Symmetry: CDA(STi , STj ) = CDA(STj , STi);
+(2) Nonnegativity: CDA(STi , STj ) ≥ 0; and
+(3) Triangle Inequality: CDA(STi , STj ) + CDA(STj , STk ) ≥ CDA(STi , STk ).
+
+STk = ∅, we have
+
+STj
+
+(cid:3)
+
+(cid:3)
+
+Example 1. We use the simple categorical time-evolving data set in Table 1 to
+show the procedure of computing the degree of change between two concepts.
+The speed of change can be computed similarly.
+
+attribute set. Assume there are 5 records in each sliding window (i.e., the window
+
+In Table 1, data set is X = {x1, x2, . . . , x20} and A = {A1, A2, A3} is the
+size N=5), and totally 4 windows in X, i.e., ST1 = {x1, x2,··· , x5}, ST2 =
+{x6, x7,··· , x10}, ST3 = {x11, x12,··· , x15} and ST4 = {x16, x17,··· , x20}.
+
+Using Deﬁnition 1, we calculate
+
+S[T1,T2]/IN D({A1}) = {{x1, x5, x6, x8, x10},{x2, x4, x9},{x3, x7}},
+
+S[T1,T2]/IN D({A2}) = {{x1, x4,··· , x10},{x2, x3}},
+
+S[T1,T2]/IN D({A3}) = {{x1, x6, x10},{x2, x3, x4, x7, x9},{x5, x8}}.
+
+According to Deﬁnition 2, we calculate
+
+A Concept-Drifting Detection Algorithm for Categorical Evolving Data
+
+491
+
+Table 1. A categorical time-evolving data table
+
+Object A1 A2 A3
+x1
+x2
+x3
+x4
+x5
+x6
+x7
+x8
+x9
+x10
+x11
+x12
+x13
+x14
+x15
+x16
+x17
+x18
+x19
+x20
+
+A M C
+Y E P
+X E P
+Y M P
+A M D
+A M C
+X M P
+A M D
+Y M P
+A M C
+B E G
+X M P
+B E D
+Y M P
+B F D
+Y M P
+X M P
+Z N T
+X M P
+Y M P
+
+N ED{A1} < ST1, ST2 >=
+
+N ED{A2} < ST1, ST2 >=
+
+N ED{A3} < ST1, ST2 >=
+
+OF D{A1} < ST1 , ST2 >=
+
+OF D{A2} < ST1 , ST2 >=
+
+OF D{A3} < ST1 , ST2 >=
+
+|∅|
+
+|∅|
+
+|∅|
+
+|∅|
+
+|{x1, x2,··· , x10}| = 0,
+|{x1, x4,··· , x10}| = 0,
+|{x1, x2,··· , x10}| = 0,
+|{x1, x2,··· , x10}| = 0,
+|{x1, x2,··· , x10}| =
+|{x1, x2,··· , x10}| = 0,
+
+|{x2, x3}|
+
+|∅|
+
+,
+
+1
+5
+
+Using Deﬁnition 3 and Deﬁnition 4, we obtain
+
+× (N EDA < ST1 , ST2 > +OF DA < ST1 , ST2 >)
+CDA(ST1, ST2 ) = 1
+× 1
+2
+= 1
+2
+= 0.0333
+
+3 (0 + 0 + 0 + 0 + 1
+
+5 + 0)
+
+492
+
+F. Cao and J.Z. Huang
+
+With similar computations, we obtain
+
+CDA(ST2 , ST3) = 0.2507
+
+CDA(ST3 , ST4) = 0.2381
+
+We can compare the degrees of change at consecutive windows as
+
+CDA(ST1 , ST2) < CDA(ST3 , ST4) < CDA(ST2 , ST3).
+
+If we set 0.2 as a threshold, we can identify that concept has drifted from ST2
+to ST3 and from ST3 to ST4. ST3 and ST4 are considered as concept drifting
+windows.
+
+If t1, t2, t3, t4 are the duration times of the 4 sliding windows, we can com-
+pute the speeds of changes N ESA, OF SA and CSA between consecutive sliding
+windows using Deﬁnition 3 and Deﬁnition 4, as shown in Table 2.
+
+Table 2. The change speed between consecutive sliding windows
+
+Sliding windows N ESA
+ST1 −→ ST2
+ST2 −→ ST3
+ST3 −→ ST4
+
+0
+0.2845 × 5
+0.1429 × 5
+
+ODSA
+0.0667 × 5
+t3 0.2169 × 5
+t4 0.3333 × 5
+
+CSA
+
+t1 0.0667 × 10
+t2 0.2507 × 10
+t3 0.2381 × 10
+
+t1+t2
+
+t2+t3
+
+t3+t4
+
+3.2 Concept-Drifting Detecting Algorithm
+
+From the above deﬁnitions, drifting of a concept can be detected by compar-
+ing the degree of change against a given threshold. As a result, a concept-
+drifting detection algorithm CDDA is developed as shown in Algorithm 1. The
+key step of CDDA is to compute the degree of change between two consec-
+utive sliding windows CDA(STi , STi+1). The complexity of this computation
+is O(|S[Ti,Ti+1]|2|A|). Therefore, the time complexity of CDDA algorithm is
+N (cid:10)4N 2|A|) = O(|X|N|A|), where X is the data
+O((cid:9) |X|
+set, |A| the number of attributes, and N the size of sliding windows. We can see
+that the time complexity of CDDA is linear with respect to the number of the
+objects in X.
+
+N (cid:10)|S[Ti,Ti+1]|2|A|) = O((cid:9) |X|
+
+4 Experimental Results and Analysis
+
+4.1 Data Set
+
+We used the 10% subset version of the KDD-CUP’99 Network Intrusion Detec-
+tion stream data set [10] to test the CDDA algorithm. The Network Intrusion
+
+A Concept-Drifting Detection Algorithm for Categorical Evolving Data
+
+493
+
+Algorithm 1. The concept-drifting detection algorithm
+1: Input:
+2: - T DT = (U, A, V, f, t) : the data set,
+3: - N : the size of sliding window,
+4: - θ : the speciﬁed threshold value,
+5: Output: Driftingwindow;
+6: Method:
+7: Driftingwindow=∅;
+8: for i = 1 to (cid:9) |U|
+
+N (cid:10) − 1 do
+
+(cid:2){i + 1};
+
+if CDA(STi, STi+1) ≥ θ then
+
+Driftingwindow=Driftingwindow
+
+9:
+10:
+end if
+11:
+12: end for
+
+Detection data set consists of a series of TCP connection records from two weeks
+of LAN network traﬃc data managed by MIT Lincoln Labs. Each record corre-
+sponded to either a normal connection or an intrusion (or attack). The attacks
+include 22 types. In the following experiments, all 22 attack-types are seen as
+“attack”. In this data set, there are 494,021 records and each record contains 42
+attributes (class label is included). We discretized the 34 numerical attributes
+using the uniform quantization method and each attribute was quantized into 5
+discrete values.
+
+4.2 Concept-Drifting Detection
+
+The size of the sliding windows and the given threshold are two parameters
+that aﬀect the detection of concept drifting. We conducted a series experiments
+to investigate the settings of these two parameters. The experiment results are
+presented as follows.
+
+Experiment 1. In this experiment, the threshold was set to 0.01 and the size
+of the sliding windows changed from 1000 to 30000 with a step length of 1000.
+The variations of the number of drifting-concepts with respect to the class label
+and the attribute set are shown in Fig.2.
+
+From Fig.2, we can see that the number of drifting-concepts decreased with
+
+increase of the sliding window size.
+Experiment 2. In this experiment, the size of the sliding window was set to
+3000 and the threshold changed from 0.01 to 1 with a step length of 0.01. The
+number of drifting-concepts changed as threshold changed with respect to the
+class label and the attribute set. The result is shown in Fig.3.
+
+From Fig.3, we can see that the change rate on the number of drifting-concepts
+over the threshold with respect to the attribute set is greater than that with
+respect to the class label. To make the number of drifting-concepts with respect
+to the class label as close as possible to the number with respect to the attribute
+set, the threshold with respect to the class label should be greater than the
+
+494
+
+F. Cao and J.Z. Huang
+
+s
+t
+
+p
+e
+c
+n
+o
+c
+−
+g
+n
+
+i
+t
+f
+i
+r
+d
+
+ 
+f
+
+o
+
+ 
+r
+e
+b
+m
+u
+n
+e
+h
+T
+
+ 
+
+40
+
+35
+
+30
+
+25
+
+20
+
+15
+
+10
+
+5
+
+0
+
+ 
+
+The number of drifting−concepts with respect to attribute set
+The number of diifting−concepts with respect to class label
+
+ 
+
+0.5
+
+1
+
+1.5
+
+2
+
+The size of sliding window
+
+2.5
+
+3
+x 104
+
+Fig. 2. The number of drifting-concepts varying with the size of the sliding windows
+
+s
+t
+
+p
+e
+c
+n
+o
+c
+−
+g
+n
+
+i
+t
+f
+i
+r
+d
+
+ 
+f
+
+o
+
+ 
+r
+e
+b
+m
+u
+n
+e
+h
+T
+
+ 
+
+25
+
+20
+
+15
+
+10
+
+5
+
+0
+
+ 
+
+0.1
+
+0.2
+
+0.3
+
+The number of drifting−concepts with respect to attribute set 
+The number of drifting−concepts with class label
+
+ 
+
+0.4
+
+0.6
+The size of  threshold
+
+0.5
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+Fig. 3. The number of drifting-concepts varying with the values of the threshold
+
+threshold with respect to the attribute set. In practice, a user can choose a
+threshold according to a prior knowledge or speciﬁc requirement.
+
+Experiment 3. The duration of objects was assumed same in each sliding
+window and the evolving speeds of concepts in diﬀerent sliding windows are
+shown in Fig.4. In this experiment, the size of the sliding window was set to
+3000.
+
+In Fig.4, the values of the change speed drop to zero in the range of 51 to
+114, 134 to 149, and 155 to 160 because the records are same in these sliding
+windows of each interval.
+
+5 Related Work
+
+Detection of concept drifting has become an interesting research topic recently.
+The problem of detecting concept drifts in numerical data was explored in
+[11, 12]. As for detection of concept drifting in categorical data, a method was
+proposed to determine concept drifts by measuring the diﬀerence of cluster distri-
+butions between two continuous sliding windows from categorical data streams
+
+A Concept-Drifting Detection Algorithm for Categorical Evolving Data
+
+495
+
+0.25
+
+0.2
+
+0.15
+
+0.1
+
+0.05
+
+d
+e
+e
+p
+s
+ 
+g
+n
+i
+t
+f
+i
+r
+d
+ 
+e
+h
+T
+
+0
+
+ 
+0
+
+20
+
+40
+
+The change speed of attribute set
+The change speed of class label
+
+ 
+
+60
+
+100
+Different slidling windows
+
+80
+
+120
+
+140
+
+160
+
+Fig. 4. The evolving speed on KDD-CUP’99 data set
+
+[13]. The shortcoming of the method is the diﬃculty to set suitable system
+parameters for diﬀerent applications. In [14], a framework was presented for de-
+tecting the change of the primary clustering structure which was indicated by
+the best number of clusters in categorical data streams. However, setting the
+decaying rates to adapt to diﬀerent types of clustering structures is very diﬃ-
+cult. Nasraoui [15] presented a framework for mining, tracking, and validating
+evolving multifaceted user proﬁles which summarize a group of users with sim-
+ilar access activities. In fact, two continuous sliding windows can be considered
+as two concepts. Cao [5] used rough set theory to deﬁne the distance between
+two concepts as the diﬀerence value of the degree of membership of each object
+belonging to two diﬀerent concepts, respectively. This method only requires one
+parameter to set, so it is easy to use in real applications. However, the distance
+can only detect the change of concepts, and reasons that cause the change are
+not considered.
+
+6 Conclusion
+
+In this paper, based on sliding window techniques and approximation accuracy,
+the change degree and the change speed of concepts have been deﬁned, and a
+concept-drifting detection algorithm has been proposed. The time complexity
+analysis and experimental results on a real data set have demonstrated the pro-
+posed algorithm is not only eﬀective in detecting concept drifts from categorical
+data streams but also eﬃcient in processing large data sets due to its linearity
+with respect to input data X.
+
+Acknowledgements. This work is supported by Shenzhen Internet Industry
+Development Fund under Grant JC201005270342A, China Postdoctoral Sci-
+ence Foundation under Grant 2012M510046, the Natural Science Foundation
+of Shanxi under Grant 2010021016-2.
+
+496
+
+F. Cao and J.Z. Huang
+
+References
+
+1. Babcock, B., Babu, S., Dater, M., Motwanti, R.: Models and Issues in data stream
+
+systems. In: Proc. PODS, pp. 1–16 (2002)
+
+2. Widmer, G., Kubat, M.: Learning in the presence of concept drift and hidden
+
+context. Machine Learning 23, 69–101 (1996)
+
+3. Guha, S., Meyerson, A., Mishra, N., Motwani, R., OCallaghan, L.: Clustering data
+streams: theory and practice. IEEE Transactions Knowledge and Data Engineer-
+ing 15, 515–528 (2003)
+
+4. Pawlak, Z.: Rough sets. International Journal of Computer and Information Sci-
+
+ences 11, 341–356 (1982)
+
+5. Cao, F.Y., Liang, J.Y., Bai, L., Zhao, X.W., Dang, C.Y.: A framework for clustering
+categorical time-evolving data. IEEE Transactions on Fuzzy Systems 18, 872–885
+(2010)
+
+6. Aggarwal, C.C., Han, J., Wang, J., Yu, P.S.: A framework for clustering evolving
+
+data streams. In: Proc. Very Large Data Bases Conf. (2003)
+
+7. Chakrabarti, D., Kumar, R., Tomkins, A.: Evloluationary clustering. In: Proc.
+
+ACM SIGKDD. Knowledge Discovery and Data Mining, pp. 554–560 (2006)
+
+8. Gaber, M.M., Yu, P.S.: Detection and classiﬁcation of changes in evolving data
+streams. International Journal of Information Technology and Decision Making 5,
+659–670 (2006)
+
+9. Minku, L.L., White, A.P., Yao, X.: The impact of diversity on online ensemble
+learning in the presence of concept drift. IEEE Transactions on Knowledge and
+Data Engineering 22, 730–742 (2010)
+
+10. UCI Machine Learning Repository (2012),
+
+http://www.ics.uci.edu/~mlearn/MLRepository.html
+
+11. Dai, B.-R., Huang, J.-W., Yeh, M.-Y., Chen, M.-S.: Adaptive clustering for mul-
+tiple evolving steams. IEEE Transactions Knowledge and Data Engineering 18,
+1166–1180 (2006)
+
+12. Yeh, M.Y., Dai, B.R., Chen, M.S.: Clustering over multiple evolving streams by
+events and corrlations. IEEE Transactions Knowledge and Data Engineering 19,
+1349–1362 (2007)
+
+13. Chen, H.-L., Chen, M.-S., Lin, S.-C.: Catching the trend: A framework for clus-
+tering concept-drifting categorical data. IEEE Transactions Knowledge and Data
+Engineering 21, 652–665 (2009)
+
+14. Chen, K.K., Liu, L.: HE-Tree:a framework for detecting changes in clustering struc-
+
+ture for categorical data streams. The VLDB Journal 18, 1241–1260 (2009)
+
+15. Nasraoui, O., Soliman, M., Saka, E., Badia, A., Germain, R.: A web usage mining
+framework for mining evolving user proﬁles in dynamic web sites. IEEE Transac-
+tions Knowledge and Data Engineering 20, 202–215 (2008)
+
+

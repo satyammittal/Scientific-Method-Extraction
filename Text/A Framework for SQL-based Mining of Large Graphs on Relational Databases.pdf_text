@@ -1,0 +1,418 @@
+A Framework for SQL-Based Mining of
+Large Graphs on Relational Databases
+
+Sriganesh Srihari1, Shruti Chandrashekar2, and Srinivasan Parthasarathy3
+
+1 School of Computing, National University of Singapore, Singapore 117590
+
+2 New Jersey Institute of Technology, Newark, NJ 07102
+
+3 The Ohio State University, Columbus, OH 43210
+
+srigsri@comp.nus.edu.sg, sc297@njit.edu, srini@cse.ohio-state.edu
+
+Abstract. We design and develop an SQL-based approach for querying
+and mining large graphs within a relational database management sys-
+tem (RDBMS). We propose a simple lightweight framework to integrate
+graph applications with the RDBMS through a tightly-coupled network
+layer, thereby leveraging eﬃcient features of modern databases. Com-
+parisons with straight-up main memory implementations of two kernels -
+breadth-ﬁrst search and quasi clique detection - reveal that SQL
+implementations oﬀer an attractive option in terms of productivity and
+performance.
+
+Keywords: Graph mining, SQL-based approach, Relational databases.
+
+1 Introduction
+
+Over the past few years data generated from real-world processes have increas-
+ingly attracted the attention of researchers from all domains. A lot of eﬀort has
+gone into analyzing this data from diﬀerent perspectives to extract valuable in-
+formation. In this respect, mining of graph data has always demanded its share of
+lime-light. This is primarily because graphs are ubiquituous and many real world
+scenarios are modeled as graphs. For example, the physical interactions between
+proteins in an organism are modeled as a protein interaction graph with pro-
+teins as vertices and their interactions as edges. Protein interaction graphs are a
+major resource for knowledge discovery: detecting protein complexes, predicting
+protein functions and reliabilities of interactions [10].
+
+There are many eﬃcient techniques developed for storing and manipulating
+graphs in main memory (RAM): for traversals, answering reachability queries,
+mining frequent patterns, etc. [5] However, as more and more graph data is
+accumulated, it is not feasible to store and manipulate entire graphs in main
+memory. Therefore, graphs are stored on disks and eﬃciently fetched into main
+memory in parts for manipulation [2]. The computational power of processors
+is increasing, while the speed gap between main and secondary (disk) memo-
+ries is widening. Therefore, graphs are compressed and stored on disks so that
+they can be retrieved in parts with as little I/O reads as possible, and uncom-
+pressed quickly in main memory [1]. To summarize, these approaches used to
+
+M.J. Zaki et al. (Eds.): PAKDD 2010, Part II, LNAI 6119, pp. 160–167, 2010.
+c(cid:2) Springer-Verlag Berlin Heidelberg 2010
+
+Framework for SQL-Based Mining of Graphs
+
+161
+
+handle graphs can be classiﬁed broadly into two categories: (a) eﬃcient stor-
+age and manipulation of graphs in main memory; (b) eﬃcient storage and in-
+dexing of graphs on disks and their retrieval into main memory (out-of-core
+approach).
+
+As graph sizes continue to grow larger, it will be interesting to look at alter-
+native approaches to mine large graphs (any data in general). The SQL-based
+approach for integrating mining with RDBMS (relational database manage-
+ment systems) was proposed long back (in 1998) for association rule mining [9],
+followed by k-way join variants for association rule mining in 2003 [6], Subdue-
+based substructure mining in 2004 [3], and frequent subgraphs mining in 2008 [4].
+The SQL-based approach proposed storing data in relational databases and min-
+ing it using SQL queries. Even though this approach was considered novel and
+promising, the idea was mainly constrained to transactional datasets, and never
+became popular for mining graphs. One probable reason, we believe, was the
+complications (awkwardness) involved in “mapping” graphs onto the relational
+framework of a RDBMS. This involved expressing the whole problem (graph
+data, storage and manipulation) declaratively (using SQL).
+
+In spite of the non-trivial nature of the SQL-based approach, it can be very
+useful and promising. The RDBMS displays data to the designers and pro-
+grammers as relational structures, while internally it stores this data on disk
+blocks using eﬃcient disk-based data structures (example, B+ trees). Hence,
+if we can reasonably “map” graph data structures and algorithms onto re-
+lational structures, then we can leverage all the services RDBMS can oﬀer:
+handling dynamic updates, buﬀer management, indexing and retrieval, and par-
+allelism. After all, more than two decades of research has gone into making
+database systems fast, scalable, robust, and concurrent. Secondly, in many in-
+stances, main memory and out-of-core implementations can get exceedingly non-
+trivial. However, the development and deployment time of SQL-based code can
+be signiﬁcantly shorter because one can avoid denormalizing data and storing
+into ﬂat ﬁles prior to data mining, and also writting code for indexing and
+retrieval [9].
+
+Fig. 1. Proposed framework for SQL-based mining of graphs on RDBMS
+
+162
+
+S. Srihari, S. Chandrashekar, and S. Parthasarathy
+
+2 Our Proposed Framework
+
+The main contribution of our work is to propose a lightweight framework for
+SQL-based mining of graphs on RDBMS. It is shown in Figure 1. This framework
+is designed for making eﬀective use of the RDBMS features for eﬃcient handling
+of large graphs. The network layer forms the most important component of
+the framework. Several graph mining applications can be “mapped” onto the
+RDBMS through the services oﬀered by this layer.
+
+2.1 The Network Layer
+
+The network layer rests conceptually within the RDBMS (see Figure 1) and runs
+in the same address space as the RDBMS. It is implemented using procedural
+SQL (stored procedures using Oracle’s PL/SQL [8]). The advantage of imple-
+menting this way is that the network layer is tightly-coupled to the RDBMS: it
+has direct access to all the services oﬀered by the RDBMS. This layer provides
+the necessary graph-abstraction to abstract away all the complications involved in
+handling large graphs. It houses all the basic table designs and ‘utilities’. Graph
+applications can either be implemented loosely-coupled or tightly-coupled to the
+RDBMS. For loosely-coupled applications, the network layer acts as a transla-
+tion layer (For example, converting C or Java calls into SQL queries), while for
+tightly-coupled applications (written in procedural SQL), it provides ready-to-
+use libraries and utilities.
+
+2.2 Eﬃcient Storage of Graphs in the Network Layer
+The basic schema design consists of storing all graphs G = {G1, G2, .., Gk}
+in a hierarchical ‘master-detail’ fashion in the following tables: a graph ta-
+ble Graph(GraphId, NoOfVertices, NoOfEdges), a vertex table Vertex(GraphId,
+VertexId), and a connectivity table AdjMatrix (GraphId, Vertex1, Vertex2). For
+every graph Gi = (Vi, Ei) ∈ G, there is a record (tuple) in Graph, uniquely iden-
+tiﬁed by the primary key {GraphId} ← {Gi}. For every vertex v ∈ Vi of graph
+Gi, there is a record in Vertex, uniquely identiﬁed by primary key {GraphId,
+VertexId} ← {Gi, v}. The whole connectivity structure is then stored as records
+in AdjMatrix. For every edge (u, v) ∈ Ei, there is a record in AdjMatrix uniquely
+identiﬁed by the primary key {GraphId, Vertex1, Vertex2} ← {Gi, u, v}. Notice
+how GraphId is propagated as part of the primary key in all tables. The whole
+graph Gi can be uniquely queried from the tables using GraphId.
+
+2.3 Implementing a Basic Utility within the Network Layer: BFS
+
+We next describe how a basic utility like the breadth-ﬁrst search (BFS) on a
+graph is eﬃciently implemented within the network layer.
+
+The BFS algorithm on a graph Gi = (Vi, Ei) and its SQL-based design are
+shown in Algorithm 1. We ﬁrst store the graph Gi in the above-proposed tables.
+To simulate the FIFO queue used in BFS, we design a table Queue (Line: 1).
+
+Framework for SQL-Based Mining of Graphs
+
+163
+
+v ← dequeue(Q); /* Query: SELECT record with MIN position */
+for each unvisited neighbor u of v do
+
+Algorithm 1. BFS(G, s)
+1: Initialize queue Q; /* Create table: Queue(GraphId, VertexId, position) */
+2: enqueue(Q, s);
+3: while Q (cid:2)= empty do
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13: end while
+14: Output the vertices in discovery sequence;
+
+enqueue(Q, u); /* Insert into Queue. */
+mark u as ‘visited’; /* Update: ‘visited’ in Discovery. */
+assign a discovery number to u;
+end for
+if commitCnt ≥ commitFreq then
+
+end if
+
+COMMIT and reset commitCnt; /* Controlled COMMITs to restrict I/O.*/
+
+For every vertex v ∈ Vi that is enqueued, there is a record in Queue, uniquely
+identiﬁed by {GraphId, VertexId} ← {Gi, v}. The position attribute in Queue
+gives the position of v in the queue. The smaller the position, the earlier v
+will be dequeued. Additionally, for every vertex v ∈ Vi, there is a record in
+table Discovery, uniquely identiﬁed by the primary key {GraphId, VertexId} ←
+{Gi, v}. There are attributes visited and discoveryNo to keep track of whether v
+has been visited and its order in the visited sequence.
+
+The BFS algorithm begins by inserting the source s into Queue (Line: 2). In
+each iteration, the vertex v with the minimum position is selected (Line: 4) from
+Queue. All unvisited neighbors u of v (Line: 5) are then selected from the join:
+AdjMatrix A (cid:2)(cid:3)A.V ertex1=v ∧ A.V ertex2=D.V ertexId ∧ D.V isited=F ALSE Discovery D.
+These vertices are inserted into Queue (Line: 6) and updated as ‘visited’ in Dis-
+covery (Line: 7, 8). These iterations continue till Queue is empty.
+
+2.4 Extending to Graph Mining: Quasi Clique Detection
+
+Quasi cliques are very interesting structures from the point of view of graph
+mining. Very simply, a quasi clique in a graph is an ‘almost’ complete subgraph.
+Quasi cliques are used to model real-world communities in protein networks,
+social networks, scientiﬁc collaboration networks, etc. [10]
+There are several ways to model quasi cliques; one way is by the notion of a
+γ-quasi clique. Given a graph G = (V, E), a subgraph Q = (VQ, EQ), VQ ⊆ V
+and EQ ⊆ E, is called a quasi clique with clustering co-eﬃcient 0 ≤ γ ≤ 1 if,
+|EQ| is at least a γ-fraction of the total possible number of edges in a subgraph
+(cid:3)
+of the same size. This is given by: |EQ| ≥ γ.
+. Therefore, the number of
+(cid:2)|VQ|
+edges missing in Q is given by: λ ≤ (1 − γ).
+
+(cid:2)|VQ|
+(cid:3)
+2
+.
+
+To study quasi clique detection on our framework, we chose the algorithm
+proposed in [10]. We only give the essense of the algorithm here so that the
+purpose of our work is served; for details see [10]. The inputs to the algorithm
+
+2
+
+164
+
+S. Srihari, S. Chandrashekar, and S. Parthasarathy
+
+are graph G = (V, E), and ﬁxed parameters k > 0 and λ ≥ 0. The algorithm
+performs a bounded recursive search to ﬁnd a quasi clique Q ⊆ V of size at
+most k with at most λ edges missing. The time complexity of the algorithm is
+O(3k+λ.fpoly(|V |)). The recursive search procedure makes the algorithm highly
+memory-intensive with the amount of additional memory required per search-
+path being O((k + λ).gpoly(|V |)), which can be very large. This also reﬂects how
+non-trivial the memory management can be in such applications, especially when
+implemented in-memory or out-of-core.
+
+2.5 The RCR Strategy in SQL-Based Approach
+
+In order to implement the quasi clique algorithm using the SQL-based approach,
+we made use of the earlier proposed table designs. Additionally, we designed the
+following interesting strategy, which we call replicate-cleanup-rebuild (RCR).
+This strategy can be adopted to other recursive algorithms as well.
+Algorithm 2. bool QCRecursive (G, Q, V \ Q, k, λ): recursive call
+1: I = {G, Q, V \ Q, k, λ}; /* Input I from parent call.*/
+2: c = generateCallNo();
+3: Working(GraphId, CallNo, Info) ← {G, c, I}; /* Replicate into Working. */
+4: Pick an edge (u, v);
+= k − 1, λ}; /* Include u into solution.*/
+5: I(cid:2)
+6: if Q(cid:2)
+7: r = QCRecursive(G(cid:2), Q(cid:2), V \ Q(cid:2), k(cid:2), λ(cid:2)
+8: if r = TRUE then return TRUE along with the solution;
+= ∅; /* Clean-up current values. */
+9: I(cid:2)
+10: I(cid:2) ← Working(G, c); /* Rebuild from Working.*/
+11: Repeat for subsequent children.
+
+is the required solution then return TRUE along with Q(cid:2)
+
+); /* Send new values to ﬁrst child. */
+
+= {G(cid:2), Q(cid:2)
+
+= Q ∪ {u}, V \ Q(cid:2), k(cid:2)
+
+;
+
+In this strategy, each call replicates (stores an additional copy) all the val-
+ues received from its parent into a working table Working (see Algorithm 2).
+It makes its computations on the received values and passes the results to its
+child. When the child backtracks, instead of reverting back each computation,
+the current computed values are blindly cleaned-up (discarded), and the original
+values are rebuilt (queried) from Working. Subsequently, new computations are
+performed on these original values and sent to the next child. Also, when a child
+call backtracks, its records are permanently deleted from Working. The records
+stored for each call c are uniquely identiﬁed by the primary key {GraphId,
+CallNo} ← {Gi, c} in Working. Considering hpoly(|V |) number of records in-
+serted per call, the total number of records in Working is O((k + λ).hpoly(|V |)).
+Notice the intuition behind this strategy: to remove all the non-trivial memory
+management (local storage of values, and reverting back of computations from
+unsuccessful paths) within the calls and instead rely on the RDBMS for eﬃcient
+mechanisms. It also illustrates how code development time can be signiﬁcantly
+shorter using the SQL approach.
+
+Framework for SQL-Based Mining of Graphs
+
+165
+
+3 Empirical Evaluation
+
+We compared SQL-based implementations against straight-up main memory im-
+plementations for: (a) breadth-ﬁrst search (BFS) as a basic graph utility, and
+(b) quasi clique detection as a graph mining application. We implemented the
+main memory versions of the algorithms in C++ using the g++ 4.1.2 compiler
+on the GNU/Linux Debian distribution (2.6 kernel) installed on an Intel Xeon
+Dual Core 2.4GHz machine with 3GB RAM, 2.7GB swap partition and 250GB
+hard disk. Whenever the memory requirement was more than 3GB we relied on
+virtual memory. The procedural SQL versions were implemented in PL/SQL [8]
+on Oracle 10g on the same machine.
+
+3.1 Evaluation of Breadth-First Search
+
+We ﬁrst compared the two implementations of BFS: (a) main memory (referred
+as BFSiMM) versus (b) procedural SQL (referred as BFSiSQL).
+We generated random networks of n nodes and m = 4n edges by replacement
+(that its, selecting m times nodes u and v such that u (cid:7)= v and removing the edges
+between duplicated pairs). Figure 2(a) shows the comparison plots of runtimes
+(seconds) on networks for n between 216 to 223. The ﬁgure shows that even
+though BFSiMM performed better than BFSiSQL for small networks, BFSiSQL
+outperformed BFSiMM for large networks.
+
+3.2 Evaluation of Quasi Clique Detection
+
+k
+2
+
+(cid:3)
+
+(cid:2)
+k
+2
+
+We next compared the two implementations of the quasi clique algorithm: (a) main
+memory (referred as QiMM) versus (b) procedural SQL (referred as QiSQL).
+We generated scale-free networks with n = 10K to 90K (∼ 213.28 to ∼ 216.45),
+and random networks with n = 10K to 40K (∼ 213.28 to ∼ 215.28) vertices. We
+clustered them and stored co-clustered vertices on close-by disk blocks. Very
+small quasi cliques are easy to ﬁnd and are not interesting, therefore we set
+k = 25 and λ = 180, giving γ ≥ {(cid:2)
+= 0.4. In each execution, 20
+γ-quasi cliques were detected by iteratively deleting the current quasi clique
+and searching for the next one in the remaining network. Figure 2(b) shows
+the comparison of runtimes (in lg scale) for QiMM and QiSQL. It shows that
+even though QiMM performed better than QiSQL for small networks, QiSQL
+outperformed QiMM for large networks. For scale-free networks, this cross-over
+occurred around 60K (∼ 215.7) nodes. For random networks of size 25K (∼ 214.6),
+QiMM continuously aborted ﬁnding only 13 quasi cliques, while QiSQL found
+all 20 quasi cliques.
+
+(cid:3) − λ}/
+
+We next considered a variety of real-world networks obtained from [7]. These
+included social (Epinions: Ep’03, Slashdot: Sd’08 and Sd’09), scientiﬁc collabora-
+tions (Astro-physics: AP’03, General Relativity: GR’07) and protein interaction
+networks (Gavin: GA’06, Krogan: KN’06). Figure 2(c) shows the comparisons
+for ﬁxed k and λ. It shows that QiSQL outperformed QiMM for all networks,
+except the small ones like PPI GA’06 and KN’06.
+
+166
+
+S. Srihari, S. Chandrashekar, and S. Parthasarathy
+
+Fig. 2. (a) BFSiMM Vs BFSiSQL; (b) QiMM Vs QiSQL on scale-free and random
+networks; (c) QiMM Vs QiSQL on real-world networks
+
+Analysis of deteriorating performance of QiMM: Even though the synthetic
+and real-world networks considered in the quasi clique experiments resided com-
+pletely in main memory, QiMM displayed worse behavior compared to QiSQL
+for the larger networks. This was primarily because of the signiﬁcant amount
+of additional memory required for recursive calls, which subjected QiMM to
+heavy thrashing. See Figure 2(c). Snapshots of memory usage (from top and
+
+Framework for SQL-Based Mining of Graphs
+
+167
+
+vmstat) of the overall system when QiMM was executing showed 100% RAM and
+100% CPU usage. The high swap-in (si) and swap-out (so) values (always zero
+while not thrashing) clearly indicated critical thrashing. The high scan indicated
+wastage of CPU cycles while waiting for the page handler to scan for free pages.
+
+4 Conclusions and Future Work
+
+In this work we have proposed a lightweight framework to extend the SQL-based
+approach to mine large graphs. We showed that this approach outperformed
+straight-up main memory implementations for BFS and quasi clique detection on
+large graph datasets. It will be interesting to realize our framework on grid tech-
+nologies (like Oracle 10g/11g) for mining large graphs in a parallel distributed
+fashion.
+
+Acknowledgements. We would like to thank Hon Wai Leong (NUS) and Anthony
+Tung (NUS) for the interesting discussions during this work, and the reviewers
+for their valuable comments. SP would like to acknowledge support from the
+following NSF grants – IIS-0917070, CCF-0702587, IIS-0347662. SS is supported
+under the NUS research scholarship.
+
+References
+
+1. Aggarwal, C., Yan, X., Yu, P.S.: GConnect: A connectivity index for massive disk-
+
+resident graphs. In: Very Large Databases (VLDB), vol. 2, pp. 862–873 (2009)
+
+2. Chen, W., et al.: Scalable mining of large disk-based graph databases. In: ACM
+
+Knowledge Discovery and Data Mining (SIGKDD), pp. 316–325 (2004)
+
+3. Chakravarthy, S., Beera, R., Balachandran, R.: DB-Subdue: Database approach
+to graph mining. In: Dai, H., Srikant, R., Zhang, C. (eds.) PAKDD 2004. LNCS
+(LNAI), vol. 3056, pp. 341–350. Springer, Heidelberg (2004)
+
+4. Chakravarthy, S., Pradhan, S.: DB-FSG: An SQL-based approach for frequent
+subgraph mining. In: Bhowmick, S.S., K¨ung, J., Wagner, R. (eds.) DEXA 2008.
+LNCS, vol. 5181, pp. 684–692. Springer, Heidelberg (2008)
+
+5. Jin, R., et al.: Eﬃciently answering reachability queries on very large directed
+
+graphs. In: ACM Management of Data (SIGMOD), pp. 595–608 (2008)
+
+6. Mishra, P., Chakravarthy, S.: Performance evaluation and analysis of k-way join
+variants for association rule mining. In: James, A., Younas, M., Lings, B. (eds.)
+BNCOD 2003. LNCS, vol. 2712, pp. 95–114. Springer, Heidelberg (2003)
+
+7. Network datasets, http://snap.stanford.edu/data/index.html
+8. Oracle PL/SQL, http://www.oracle.com/technology/tech/pl_sql/index.html
+9. Sarawagi, S., Thomas, S., Agarwal, R.: Integrating mining with relational database
+systems: Alternatives and implications. In: ACM Management of Data (SIGMOD),
+pp. 343–354 (1998)
+
+10. Srihari, S., Ng, H.K., Ning, K., Leong, H.W.: Detecting hubs and quasi cliques in
+
+scale-free networks. In: IEEE Pattern Recognition (ICPR), pp. 1–4 (2008)
+
+

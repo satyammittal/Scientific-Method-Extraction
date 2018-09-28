@@ -1,0 +1,731 @@
+A Generic Classiﬁer-Ensemble Approach for Biomedical
+
+Named Entity Recognition
+
+Zhihua Liao1 and Zili Zhang2,3,(cid:2)
+
+1 Modern Foreign-Language Education Technology Center, Foreign Studies College
+
+Hunan Normal University, CS 410081, China
+
+2 Faculty of Computer and Information Science, Southwest University, CQ 400715, China
+
+3 School of Information Technology, Deakin University, VIC 3217, Australia
+
+liao.zhihua61@gmail.com,zzhang@deakin.edu.au
+
+for biomedical
+
+Abstract. In named entity recognition (NER)
+literature,
+approaches based on combined classiﬁers have demonstrated great performance
+improvement compared to a single (best) classiﬁer. This is mainly owed to suf-
+ﬁcient level of diversity exhibited among classiﬁers, which is a selective prop-
+erty of classiﬁer set. Given a large number of classiﬁers, how to select different
+classiﬁers to put into a classiﬁer-ensemble is a crucial issue of multiple classiﬁer-
+ensemble design. With this observation in mind, we proposed a generic genetic
+classiﬁer-ensemble method for the classiﬁer selection in biomedical NER. Vari-
+ous diversity measures and majority voting are considered, and disjoint feature
+subsets are selected to construct individual classiﬁers. A basic type of individ-
+ual classiﬁer – Support Vector Machine (SVM) classiﬁer is adopted as SVM-
+classiﬁer committee. A multi-objective Genetic algorithm (GA) is employed as
+the classiﬁer selector to facilitate the ensemble classiﬁer to improve the overall
+sample classiﬁcation accuracy. The proposed approach is tested on the bench-
+mark dataset – GENIA version 3.02 corpus, and compared with both individual
+best SVM classiﬁer and SVM-classiﬁer ensemble algorithm as well as other ma-
+chine learning methods such as CRF, HMM and MEMM. The results show that
+the proposed approach outperforms other classiﬁcation algorithms and can be a
+useful method for the biomedical NER problem.
+
+1 Introduction
+
+With the wide applications of information technology in biomedical ﬁeld, biomedical
+technology has developed very rapidly. This in turn produces a large amount of biomed-
+ical data such as human gene bank. Consequently, biomedical literature available from
+the Web has experienced unprecedented growth over the past few years. The amount
+of literature in MEDLINE grows by nearly 400,000 citations each year. To mine infor-
+mation from the biomedical databases, a helpful and useful pre-processing step is to
+extract the valuable biomedical named entity. In other words, this step needs to identify
+some names from scientiﬁc text that is not structured as traditional databases and clas-
+sify these different names. As a result, biomedical named entity recognition (BioNER)
+becomes one of the most important issues in automatic text extraction system. Many
+
+(cid:2) Corresponding author.
+
+P.-N. Tan et al. (Eds.): PAKDD 2012, Part I, LNAI 7301, pp. 86–97, 2012.
+c(cid:2) Springer-Verlag Berlin Heidelberg 2012
+
+A Generic Classiﬁer-Ensemble Approach for Biomedical Named Entity Recognition
+
+87
+
+popular classiﬁcation algorithms have been applied to this bioNER problem. These
+algorithms include Support Vector Machine (SVM) [1,18,19], Conditional Random
+Fields (CRFs) [3], the Hidden Markov Model (HMM) [5], the Maximum Entropy (ME)
+[15], decision tree [16], and so on. While successful, each classiﬁer has its own short-
+comings and none of them could consistently perform well over all different datasets.
+To overcome the shortcomings of individual methods, ensemble method has been sug-
+gested as a promising alternative.
+
+Ensemble method is more attractive than individual classiﬁcation algorithm in that it
+is an effective approach for improving the prediction accuracy of a single classiﬁcation
+algorithm. An ensemble of classiﬁers is a set of classiﬁers whose individual decisions
+are combined in some way (typically by weighted or unweighted voting) to classify new
+examples [8,11]. One of the most active areas of research in supervised learning has
+been to study methods for constructing good ensembles of classiﬁers. The most impor-
+tant property of successful ensemble methods is if the individual classiﬁers have error
+rate below 0.5 when classifying sample data while these errors are uncorrelated at least
+in some extent. That is, a necessary and sufﬁcient condition for an ensemble of classi-
+ﬁers over its individual members is that the classiﬁers are accurate and diverse. Several
+recent studies indicate that the ensemble learning could improve the performance of a
+single classiﬁer in many real world text classiﬁcation [6,7,9,10,12,13,14,23,24].
+
+In this paper, we propose a generic genetic classiﬁer-ensemble approach, which em-
+ploys multi-objective genetic algorithm and SVM based classiﬁers to construct an en-
+semble classiﬁer. Each SVM based classiﬁer is trained on a different feature subset
+and used as the classiﬁcation committee. The rest of the paper is organized as follows:
+Section 2 discusses the generic genetic classiﬁer-ensemble approach in detail. Experi-
+mental results and analysis are provided in Section 3. Conclusions and future work are
+presented in Section 4.
+
+2 The Generic Genetic Classiﬁer-Ensemble Approach
+
+Classiﬁer-ensemble is a popular technique in pattern recognition domain. It reﬂects
+the generalization accuracy if an ensemble depends not only on the performances of
+the individual classiﬁer but also on the diversity among the classiﬁers [6,8,10,7,12,22].
+Therefore, a classiﬁer-ensemble system is usually made up of two major components:
+the classiﬁers forming the ensemble members and the combination scheme. In order
+to achieve this goal, we develop a generic genetic classiﬁer-ensemble algorithm. In the
+proposed approach, SVM is used as the basic classiﬁer and the genetic algorithm was
+used to search the optimal solution of weighted classiﬁer combination.
+
+2.1 Feature Set and SVM Based Classiﬁer
+
+Since the main issue using machine learning method for BioNER task is to design a
+proper feature set, choosing the suitable feature is very important for improving the
+performance of the system. Here various types of features have been considered for
+bioNER task in different combinations (see Table 1).
+
+88
+
+Z. Liao and Z. Zhang
+
+– Word: All words appearing in the training data.
+– Orthography: Table 2 shows the orthographic features. If the token has more than one feature,
+
+then we used the feature list of Table 2 from left to right and from up to down orderly.
+
+– Preﬁx: Uni-,bi-, and tri-grams(in letters) of the starting letters of the current token.
+– Sufﬁx: Uni-,bi-, and tri-grams(in letters) of the ending letters of the current token.
+– Lexical: POS tags, base phrase classes, and base noun phrase chunks. POS tags are generated
+
+by Geniatagger1.
+
+– Preceding class: The prediction of the classiﬁer for the preceding tokens are computed dy-
+
+namically and used as feature.
+
+– Surface word: Surface words forming a list of tokens that are tagged as an entity in the
+training data. In our system, the surface word includes simple surface word lists, name aliases
+and trigger words [17,21].
+
+Table 1. The features in our generic genetic classiﬁer-ensemble system
+
+Value
+all words in the training data
+capital, symbol, etc.(see Table 2)
+1,2, and 3 gram of starting letters of word
+1,2, and 3 gram of ending letters of word
+POS tags, base phrase classes, and base noun phrase chunks
+
+Feature
+words
+orthographic
+preﬁx
+sufﬁx
+lexical
+preceding class -4,-3, -2, -1
+surface word
+
+simple surface word lists, name aliases and trigger words
+
+Table 2. Orthographic features
+
+Example
+alpha
+I2
+
+Greek
+CapsAndDigits
+LettersAndDigits p52
+
+Example Feature
+
+Feature
+DigitNumber 15
+SingleCap M
+RalGDS
+TwoCaps
+Interleukin LowCaps
+InitCaps
+kinases
+Lowercase
+Backslash
+/
+CloseSquare ]
+;
+SemiColon
+(
+OpenParen
+Comma
+,
+the
+Determiner
+Other
+* @
+
+Hyphen
+OpenSquare
+Colon
+Pecent
+CloseParen
+FullStop
+Conjunction
+
+kappaB
+-
+[
+:
+%
+)
+.
+and
+
+1 http://www-tsujii.is.s.u-tokyo.ac.jp/GENIA/tagger/
+
+A Generic Classiﬁer-Ensemble Approach for Biomedical Named Entity Recognition
+
+89
+
+Table 3. The parameters of Yamcha
+
+Value
+polynomial
+1,2,3
+
+Parameter
+kernel
+degree of kernel
+direction of parsing forward, backward
+windows position
+multi-class
+
+9 words(position -4, -3,-2,-1,0,+1,+2,+3,+4)
+pair-wise
+
+Next, due to the fact that support vector machines(SVMs) are powerful methods
+for learning a classiﬁer and have been applied successfully to many NLP tasks, SVMs
+construct the base classiﬁer in BioNER. The general-purpose text chunker named Yet
+Another Multipurpose Chunk Annotator-Yamcha2 uses TinySVM3 for learning the clas-
+siﬁers. Yamcha is utilized to transform the input data into feature vectors usable by
+TinySVM [18,19]. Table 3 shows the Yamcha parameters. Accordingly, each classiﬁer
+is unique in at least one of the following properties: window size, degree of the poly-
+nomial kernel, parsing direction as well as feature set. Consequently, this constructs 46
+individual SVM classiﬁer committees [17,20,21].
+
+2.2 Generic Genetic Classiﬁer-Ensemble Algorithm
+
+The genetic algorithm (GA) was developed in the 1970s by Holland as an effective
+evolutionary optimization method [25]. In GA the two core elements are chromosome
+and ﬁtness. Chromosome is used to encode representation of the optimal solution to the
+classiﬁer-ensemble problem. Fitness is designed to measure the chromosome’s perfor-
+mance.
+
+Genetic Classiﬁer-Ensemble-I. The basic idea behind the genetic classiﬁer-ensemble-
+I is that different classes in each classiﬁer differ with contributing degrees of prediction
+classes. In other words, each class in each classiﬁer has been assigned a weight which
+corresponds with the contributing degree of prediction class. To use genetic algorithm,
+we ﬁrst need to represent the problem domain as a chromosome. Here, we want to ﬁnd
+an optimal set of weight for classiﬁer ensemble scheme shown in Figure 1. Assume
+that there are totally N tags (classes) corresponding to the named entities considered
+in the BioNER task. Set the total number of available classiﬁers denoted by M. The
+optimal weight solution of the classiﬁer ensemble scheme is encoded in the form of a
+weight chromosome,which has N*M genes. First N genes belong to the ﬁrst classiﬁer
+and the next N genes the second classiﬁer and so on. The encoding of a chromosome is
+illustrated in Figure 1. Each value of gene in the chromosome is initialized to a small
+random number, said within the range[0,1]. Thus, we obtain a chromosome.
+
+The second step is to deﬁne a ﬁtness function for evaluating the chromosome’s per-
+formance. This function must estimate the performance of a given classiﬁer-ensemble
+2 http://cl.aist-nara.ac.jp/∼taku-ku/software/yamcha/
+3 http://chasen.org/∼taku/software/TinySVM/
+
+90
+
+Z. Liao and Z. Zhang
+
+Fig. 1. Genetic Classiﬁer-Ensemble-I
+
+problem with weights. We deﬁne the ﬁtness of a chromosome as the full object F-score
+provided by the weighted majority voting type decision combination rule [12,17,22].
+In this rule, the class receiving the maximum combined score is selected as the joint
+decision. By the deﬁnition of the combined score of a particular class,
+
+f (ci) =
+
+M(cid:2)
+
+m=1
+
+Fm · w(m, i)
+
+we obtain the ﬁtness as follows:
+
+fn(cl) = max(f (c1), f (c2),··· , f (cn))
+
+where M denotes the total number of classiﬁers and Fm denotes the full object F-score
+of mth classiﬁer. w(m,i)is assigned to a weight value in the gene of ith class of mth
+classiﬁer in the chromosome.
+
+The third step is to choose the genetic operators-crossover and mutation. A crossover
+operator takes two parent chromosomes and creates two children with genetic material
+from both parents. In the proposed approach, either uniform or two point crossover
+method is randomly selected with equal probability. The selected operator is applied
+with a probability pcross to generate two offspring. A mutation operator randomly se-
+lects a gene in offspring chromosomes with a probability pmut and adds a small ran-
+dom number within the range[0,1] to each weight in the gene. In addition, we still need
+to specify the tournament size,elitism, population size and the number of generations.
+Tournament size is used in tournament selection during the reproduction. Elitism is ap-
+plied at the end of each iteration where the best elit size% of the original population are
+used to replace those in the offspring producing the lowest ﬁtness.
+
+Genetic Classiﬁer-Ensemble-II. The basic principle behind the genetic classiﬁer-
+ensemble-II is that different classiﬁers have different contributing degrees of prediction
+of classes. In other words, each classiﬁer can be assigned a weight which corresponds
+with the contributing degree of prediction of class. Suppose each chromosome is en-
+coded as a weight string having M genes, one for each classiﬁer(see Figure 2). If the
+
+A Generic Classiﬁer-Ensemble Approach for Biomedical Named Entity Recognition
+
+91
+
+value of a gene is wm, this means that the contributing degree of the mth classiﬁer in
+this ensemble is wm. Accordingly, the combined score of a given class can be redeﬁned
+as:
+
+M(cid:2)
+
+Fm · wm
+
+f (ci) =
+
+m=1
+
+Fig. 2. Genetic Classiﬁer-Ensemble-II
+
+At the same time, all parameters of this algorithm described above including pop-
+ulation size, the number of generations, crossover and mutation rate etc. are kept the
+same.
+
+Genetic Classiﬁer-Ensemble-III. Based on the above consideration in both subsec-
+tions 2.2.1 and 2.2.2, not only contributing degrees of prediction classes among
+different classes in the same classiﬁer are different, but also contributing degrees of
+prediction classes among different classiﬁers differ. Thus, the chromosome is made
+up of the chromosome in genetic classiﬁer-ensemble-I and the chromosome in genetic
+classiﬁer-ensemble-II, and has (N+1)*M genes (see Figure 3). Therefore, the combined
+score of a given class is determined as:
+M(cid:2)
+
+f (ci) =
+
+Fm · w(m, i) · wm
+
+m=1
+
+Similarly, all the other parameters are kept the same.
+
+After given the deﬁnition of chromosome and ﬁtness as well as all parameters, the
+complete genetic classiﬁer-ensemble algorithm can be described in the following steps:
+
+1. Generate randomly an initial chromosome population of size MAX POPULATION
+2. For each chromosome in the population
+
+2.1 Apply weighted majority to all classiﬁers vector
+2.2 Compute full object F-score as ﬁtness of the chromosome
+
+92
+
+Z. Liao and Z. Zhang
+
+Fig. 3. Genetic Classiﬁer-Ensemble-III
+
+3. For generation index in 1 ...MAX GENERATION
+
+3.1 For chromosome index in 1 ...MAX POPULATION
+
+– Select two parents from the old population
+– Crossover the two parents to produce two offspring with probability pcross
+– Mutate each gene of each offspring with probability pmut
+– Apply weighted majority to each of the offspring
+– Compute full object F-score as ﬁtness of each offspring
+
+3.2 Replace the worst ELIT SIZE% of the offspring with the best chromosomes from the
+
+original population to form the new population
+
+4. Select the best chromosome as the resultant ensemble
+
+Figure 4 presents the ﬂow of the proposed generic genetic classiﬁer-ensemble
+algorithm.
+
+Fig. 4. The ﬂow of the proposed generic genetic classiﬁer-ensemble algorithm
+
+The overall system architecture is illustrated in Figure 5. The best-ﬁtting solution
+of weighted classiﬁer-ensemble is obtained by using the classiﬁer outputs generated
+
+A Generic Classiﬁer-Ensemble Approach for Biomedical Named Entity Recognition
+
+93
+
+through three-fold cross-validation on the training data. In our proposed algorithm, the
+training data is initially partitioned into three parts. Each classiﬁer is trained using two
+parts and then tested with the remaining part. This procedure is repeated three times and
+the whole set of training data is used for computing the best-ﬁtting solution. Multi-class
+SVM is used for all individual classiﬁer. The major differences among the individual
+classiﬁers are in their modeling parameter values and feature sets. Each classiﬁer is
+different from the rest in at least one modeling parameter or the feature set. During
+testing, the outputs of the individual classiﬁers are combined by using the computed
+best-ﬁtting solution of weight classiﬁer-ensemble.
+
+Fig. 5. Overall system architecture
+
+3 Experiments and Results
+
+To conduct the experiment, we use the latest GENIA4 version 3.02 corpus provided by
+the shared task in COLING 2004 JNLPBA. The corpus includes the training dataset
+and the testing dataset. The training dataset consists of 2000 MEDLINE abstracts of
+the GENIA corpus with named entities in IOB2 format. The testing dataset consists
+of 404 abstracts. There are 18546 sentences and 492551 words in the training dataset
+and 3856 sentences and 101039 words in the testing dataset. Each word is tagged with
+“B-X”, “I-X”, or “O” to indicate that the word is at the “beginning”(B) or “inside”(I)
+of a named entity of type X, or “outside”(O) of a named entity. For BioNER task, the
+named entity types are DNA, RNA, cell line, cell type, and protein. Table 4 shows the
+number of 5 different biomedical named entities in this corpus. For each entity, two
+different tags(classes) result in 10 tags for the named entities and one additional tag
+for all non-named entities called class. Accordingly, this translate to a total of N=11
+classes. Besides, we present M=46 single SVM base classiﬁer committees on the basis
+
+4 http://www-tsujiii.is.s.u-tokyo.ac.jp/GENIA/
+
+94
+
+Z. Liao and Z. Zhang
+
+of different combination within feature set and Yamcha parameter. The experimental
+performance is evaluated by the standard measures, namely precision, recall and F-
+score which is the harmonic mean of precision and recall.
+
+Table 4. Number of different biomedical named entities in GENIA 3.02 corpus
+
+Train data Test data
+9,534
+951
+
+Types
+DNA
+RNA
+Cell line 3,830
+Cell type 6,718
+30,269
+Protein
+Total
+51,302
+
+1,056
+118
+500
+1,921
+5,067
+8,662
+
+In the simulation experiments, The tournament size, crossover probability, mutation
+probability and elitism ratio are empirically computed as 40, 0.7, 0.02, and 20%, respec-
+tively. The population size of the generic genetic classiﬁer-ensemble algorithm is set to
+100. This means that one hundred different ensemble candidates evolve simultaneously.
+The algorithm is run for 10000 iterations. The weight classiﬁer-ensemble correspond-
+ing to the chromosome with the highest ﬁtness value in the last generation is selected
+as the optimal solution. We perform simulation experiments repeatedly by changing the
+weight values of these chromosomes and selected the weight genes of the chromosome
+providing the best performance of BioNER on the training data. In the testing, the test
+data is measured by using the optimal solution. This solution provides the best-ﬁtting
+ensemble parameter with weights in the simulation experiments.
+
+Table 5 shows the performance of the proposed three genetic classiﬁer-ensemble
+scheme on precision, recall, and Fscore for BioNER. In this table, the genetic classiﬁer-
+ensemble-III gets the better results compared with the genetic classiﬁer-ensemble-I and
+genetic classiﬁer-ensemble-II, where the performance of precision, recall and Fsore
+reach 75.65%, 78.52%, and 77.85% respectively.
+
+It can be seen that in Table 6 we compare our best result with those of the recent work
+that employ support vector machines as classiﬁer. The individual best SVM-classiﬁer
+has the full feature set and optimal setting parameters[20,21]. Dimililer et al. used a
+vote-based classiﬁer selection approach to construct a classiﬁer ensemble and effec-
+tive post-processing techniques for biomedical named entity recognition task[17,20,21].
+Compared with the individual best SVM-classiﬁer and SVM-classiﬁer ensemble, our
+method outperforms them. It means that our generic genetic classiﬁer-ensemble ap-
+proach which searched the best-ﬁtting ensemble parameter with weights can be power-
+ful and efﬁcient to combine orderly individual SVM base classiﬁer with their strengths
+through giving the corresponding weights and to avoid individual classiﬁer’s weakness.
+Table 7 shows that the best result of our experiment outperforms that of other indi-
+vidual classiﬁer algorithms [26]. Their approaches include the Hidden Markov Model
+(HMM) [5], the Maximum Entropy Markov Model (MEMM) [4] and the Conditional
+Random Field (CRF) [3], which use deep knowledge resources with extra costs in
+
+A Generic Classiﬁer-Ensemble Approach for Biomedical Named Entity Recognition
+
+95
+
+Table 5. The performances of different biomedical named entities on three genetic classiﬁer-
+ensemble schemes
+
+Genetic Classiﬁer-ensemble-I Genetic Classiﬁer-ensemble-II Genetic Classiﬁer-ensemble-III
+
+Types Precision Recall F-score
+
+Precision Recall F-score
+
+Precision Recall F-score
+
+DNA 73.54
+RNA 74.33
+Cell line 72.50
+Cell type 73.15
+Protein 83.36
+
+74.25 72.92
+75.85 75.22
+71.56 72.12
+72.87 72.04
+76.58 79.65
+
+Total
+
+74.33
+
+73.52 73.86
+
+70.68
+71.15
+68.25
+69.62
+80.56
+
+71.28
+
+70.98 70.76
+70.25 70.46
+67.20 67.82
+72.58 70.37
+71.25 75.86
+
+71.02 71.16
+
+74.65
+75.88
+74.60
+74.85
+84.58
+
+75.65
+
+75.59 75.21
+76.79 76.42
+73.82 74.36
+75.39 75.06
+80.06 83.57
+
+78.52 77.85
+
+Table 6. The comparison with individual best SVM classiﬁer and Vote-based SVM-classiﬁer
+selection for bioNER task
+
+Approaches
+Single best SVM-classiﬁer[20,21]
+Vote-based SVM-classiﬁer selection[20,21]
+Genetic classiﬁer-ensemble-III
+
+Precision Recall F-score
+69.40
+71.74
+75.65
+
+70.60
+73.76
+78.52
+
+69.99
+72.74
+77.85
+
+Table 7. The comparison with other different individual classiﬁer algorithms on bioNER task
+
+Approaches
+Zhou and Su[1]
+Finkel et al.[2]
+Settles[3]
+Song et al.[4]
+Zhao[5]
+Genetic classiﬁer-ensemble-III
+
+Precision Recall F-score
+69.42
+68.56
+69.30
+64.80
+61.00
+75.65
+
+75.99
+71.62
+70.30
+67.80
+69.10
+78.52
+
+72.55
+70.06
+69.80
+66.30
+64.80
+77.85
+
+pre-processing and post-processing. For instance, Zhou and Su [1] used name alias
+resolution, cascaded entity name resolution, abbreviation resolution and an open dic-
+tionary (around 700,000 entries). Finkel et al. used gazetteers and web-querying [2].
+Settles used 17 lexicons that include Greek letters, amino acids, and so forth [3]. In
+contrast, our system did not include these similar processing.
+
+4 Conclusion and Future Work
+
+We proposed a generic genetic classiﬁer-ensemble approach to recognizing the biomed-
+ical named entities. The contributions of this paper are that a novel genetic classiﬁer-
+ensemble algorithm with weights is provided to deal with bioNER task and improve the
+BioNER performance compared with both of SVM-based classiﬁers as well as other
+individual machine learning algorithms. In the future, we will incorporate much more
+
+96
+
+Z. Liao and Z. Zhang
+
+effective features and more classiﬁers using different machine learning algorithms in
+our ensemble approach, and include some post-processing techniques and comparison
+of computational cost.
+
+References
+
+1. Zhou, G., Su, J.: Exploring Deep Knowledge Resources in Biomedical Name Recognition.
+In: Proceedings of the Joint Workshop on Natural Language Processing in Biomedicine and
+its Applications (JNLPBA 2004), pp. 70–75 (2004)
+
+2. Finkel, J., Dingare, S., Nguyen, H., Nissim, M., Sinclair, G., Manning, C.: Exploiting Context
+for Biomedical Entity Recognition: From Syntax to the Web. In: Proceedings of the Joint
+Workshop on Natural Language Processing in Biomedicine and its Applications, JNLPBA
+2004 (2004)
+
+3. Settles, B.: Biomedical Named Entity Recognition Using Conditional Random Fields and
+Novel Feature Sets. In: Proceedings of the Joint Workshop on Natural Language Processing
+in Biomedicine and its Applications (JNLPBA 2004), pp. 104–107 (2004)
+
+4. Song, Y., Kim, E., Lee, G.-G., Yi, B.-K.: POSBIOTM-NER in the shared task of
+BioNLP/NLPBA 2004. In: Proceedings of the Joint Workshop on Natural Language Pro-
+cessing in Biomedicine and its Applications, JNLPBA 2004 (2004)
+
+5. Zhao, S.: Name Entity Recognition in Biomedical Text using a HMM model. In: Proceedings
+of the Joint Workshop on Natural Language Processing in Biomedicine and its Applications
+(JNLPBA 2004), pp. 84–87 (2004)
+
+6. Zhang, Z., Yang, P.: An ensemble of classiﬁers with genetic algorithm based feature selec-
+
+tion. IEEE Intelligent Informatics Bulletin 9, 18–24 (2008)
+
+7. Yang, P., Zhang, Z., Zhou, B.B., Zomaya, A.Y.: Sample Subset Optimization for Classifying
+Imbalanced Biological Data. In: Huang, J.Z., Cao, L., Srivastava, J. (eds.) PAKDD 2011, Part
+II. LNCS(LNAI), vol. 6635, pp. 333–344. Springer, Heidelberg (2011)
+
+8. Yang, P., Yang, Y.-H., Zhou, B.B., Zomaya, A.Y.: A review of ensemble methods in bioin-
+
+formatics. Current Bioinformatics 5, 296–308 (2010)
+
+9. Yang, P., Ho, J.W.K., Zomaya, A.Y., Zhou, B.B.: A genetic ensemble approach for gene-gene
+
+interaction identiﬁcation. BMC Bioinformatics 11, 524 (2010)
+
+10. Kuncheva, L.I., Jain, L.C.: Designing classiﬁer fusion systems by genetic algorithms. IEEE
+
+Transaction on Evolutionary Computation 4(4) (September 2000)
+
+11. Dietterich, T.G.: Ensemble Methods in Machine Learning. In: Kittler, J., Roli, F. (eds.) MCS
+
+2000. LNCS, vol. 1857, pp. 1–5. Springer, Heidelberg (2000)
+
+12. Ruta, D., Gabrys, B.: Application of the Evolutionary Algorithms for Classiﬁer Selection in
+Multiple Classiﬁer Systems with Majority Voting. In: Kittler, J., Roli, F. (eds.) MCS 2001.
+LNCS, vol. 2096, pp. 399–408. Springer, Heidelberg (2001)
+
+13. Larkey, L.S., Croft, W.B.: Combining classiﬁer in text categorization. In: SIGIR 1996, pp.
+
+289–297 (1996)
+
+14. Patrick, J., Wang, Y.: Biomedical Named Entity Recognition System. In: Proceedings of the
+
+10th Australasian Document Computing Symposium (2005)
+
+15. Tsai, T.-H., Wu, C.-W., Hsu, W.-L.: Using Maximum Entropy to Extract Biomedical Named
+
+Entities without Dictionaries. In: JNLPBA 2006, pp. 268–273 (2006)
+
+16. Chan, S.-K., Lam, W., Yu, X.: A Cascaded Approach to Biomedical Named Entity Recogni-
+tion Using a Uniﬁed Model. In: The 7th IEEE International Conference on Data Mining, pp.
+93–102
+
+A Generic Classiﬁer-Ensemble Approach for Biomedical Named Entity Recognition
+
+97
+
+17. Dimililer, N., Varo˘glu, E.: Recognizing Biomedical Named Entities Using SVMs: Improving
+Recognition Performance with a Minimal Set of Features. In: Bremer, E.G., Hakenberg, J.,
+Han, E.-H(S.), Berrar, D., Dubitzky, W. (eds.) KDLL 2006. LNCS (LNBI), vol. 3886, pp.
+53–67. Springer, Heidelberg (2006)
+
+18. Kazamay, J.-I., Makinoz, T., Ohta, Y., Tsujiiy, J.-I.: Tuning Support Vector Machines for
+
+Biomedical Named Entity Recognition. In: ACL NLP, pp. 1–8 (2002)
+
+19. Mitsumori, T., Fation, S., Murata, M., Doi, K., Doi, H.: Gene/protein name recognition based
+on support vector machine using dictionary as features. BMC Bioinformatics 6(suppl. 1)
+(2005)
+
+20. Dimililer, N., Varo˘glu, E., Altınc¸ay, H.: Vote-Based Classiﬁer Selection for Biomedical NER
+Using Genetic Algorithms. In: Mart´ı, J., Bened´ı, J.M., Mendonc¸a, A.M., Serrat, J. (eds.)
+IbPRIA 2007, Part II. LNCS, vol. 4478, pp. 202–209. Springer, Heidelberg (2007)
+
+21. Dimililer, N., Varoglu, E., Altmcay, H.: Classiﬁer subset selection for biomedical named
+
+entity recognition. Appl. Intell., 267–282 (2009)
+
+22. Ruta, D., Gabrys, B.: Classiﬁer selection for majority voting. Inf. Fusion 1, 63–81 (2005)
+23. Yang, T., Kecman, V., Cao, L., Zhang, C., Huang, J.Z.: Margin-based ensemble classiﬁer for
+
+protein fold recognition. Expert Syst. Appl. 38(10), 12348–12355 (2011)
+
+24. Zhang, P., Zhu, X., Shi, Y., Wu, X.: An Aggregate Ensemble for Mining Concept Drifting
+Data Streams with Noise. In: Theeramunkong, T., Kijsirikul, B., Cercone, N., Ho, T.-B. (eds.)
+PAKDD 2009. LNCS, vol. 5476, pp. 1021–1029. Springer, Heidelberg (2009)
+
+25. John, H.: Adaptation in Natural and Artiﬁcial Systems: An Introductory Analysis with Appli-
+cations to biology, control and artiﬁcial intelligence. MIT Press (1998) ISBN 0-262-58111-6
+26. Kim, J.-D., Ohta, T., Tsuruoka, Y., Tateisi, Y., Collier, N.: Introduction to the Bio-Entity
+Recognition Task at JNLPBA. In: Proceedings of the International Workshop on Natural
+Language Processing in Biomedicine and its Applications (JNLPBA 2004), pp. 70–75 (2004)
+
+

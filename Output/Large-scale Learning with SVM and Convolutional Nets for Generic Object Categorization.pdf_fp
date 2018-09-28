@@ -1,0 +1,3 @@
+set([])
+
+set(['kernel', 'layer', 'converg', 'imageplan', 'margincriterion', 'cost', 'amdathloncpu', 'linux', 'onlin', 'facedetect', 'edgeinformationfeatur', 'detect', 'appear', 'memori', 'perform', 'data', 'imagerecognit', 'smo', 'norb', 'version', 'decad', 'ocr', 'tool', 'architectur', 'node', 'generalizationerror', 'categor', 'max', 'imag', 'histogram', 'lossfunct', 'train', 'colortextur', 'coil', 'toolbox', 'informationcriterion', 'cachingmechan', 'bank', 'descent', 'case', 'choic', 'hmax', 'scalabl', 'gabor', 'work', 'literatur', 'scalecontrastgain', 'kernelfunct', 'paper', 'mode', 'time', 'recognit', 'implement', 'principl', 'mnist', 'featureextract'])

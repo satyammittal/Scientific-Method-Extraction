@@ -1,0 +1,1282 @@
+An Iterative Fusion Approach to Graph-based
+Semi-supervised Learning from multiple views
+
+Yang Wang
+
+†‡
+
+§
+, Jian Pei
+
+, Xuemin Lin
+
+†
+
+, and Qing Zhang
+
+‡†
+
+y
+
+The University of New South Wales, Sydney, Australia
+
+Simon Fraser University, Canada
+
+Australian E-Health Research Center
+
+{wangy,lxue}@cse.unsw.edu.au
+
+z
+
+x
+
+jpei@cs.sfu.ca
+
+qing.zhang@csiro.au
+
+Abstract. Often, a data object described by many features can be nat-
+urally decomposed into multiple “views”, where each view consists of a
+subset of features. For example, a video clip may have a video view and
+an audio view. Given a set of training data objects with multiple views,
+where some objects are labeled and the others are not, semi-supervised
+learning with graphs from multi-views tries to learn a classiﬁer by treat-
+ing each view as a similarity graph on all objects, where edges are de-
+ﬁned by the similarity on object pairs based on the view attributes.
+Labels and label relevance ranking scores of labeled objects can be prop-
+agated from labeled objects to unlabeled objects on the similarity graphs
+so that similar objects receive similar labels. The state-of-the-art, one-
+combo-ﬁts-all methods linearly and independently combine either the
+metrics or the label propagation results from multi-views and then build
+a model based on the combined results. However, more often than not,
+the similarities between various objects may be manifested diﬀerently by
+diﬀerent views. In such situations, the one-combo-ﬁts-all methods may
+not perform well. To tackle the problem, we develop an iterative Semi-
+Supervised Metric Fusion (SSMF) approach in this paper. SSMF fuses
+metrics and label propagation results from multi-views iteratively until
+the fused metric and label propagation results converge simultaneously.
+Views are weighted dynamically during the fusion process so that the
+adversary eﬀect of irrelevant views, identiﬁed at each iteration of fusion
+process, can be reduced eﬀectively. To evaluate the eﬀectiveness of SSMF,
+we apply it on multi-view based and content based image retrieval and
+multi-view based multi-label image classiﬁcation on real world data set,
+which demonstrates that our method outperforms the state-of-the-art
+methods.
+
+Introduction
+
+1
+Semi-supervised learning with graphs [10] is an important and eﬀective approach,
+which propagates limited label information to unlabeled data objects on a sim-
+ilarity graph. A similarity graph uses the set of objects as vertices, and links
+edges based on the similarity between objects. Edges in a similarity graph may
+take similarity scores as weights. After label propagation [10] or manifold rank-
+ing [9] in a similarity graph, the more similar two objects, the more likely they
+have similar labels or the similar label relevance ranking scores. This property
+
+2
+
+Yang Wang, Jian Pei, Xuemin Lin, Qing Zhang
+
+is called local smoothness [8]. The labeled objects iteratively propagate the la-
+bel information or label relevance ranking scores to unlabeled ones via graph
+edges until convergence, and the ﬁnal labeling result based on the label rele-
+vance scores should be consistent to the initial label information, which is called
+global consistency [8].
+
+Often, a data object described by many features can be naturally decom-
+posed into multiple “views”, where each view consists of a subset of features.
+For example, an image may have a color view and a shape view. Given a set of
+training data objects with multi-views, where some objects are labeled and the
+others are not, semi-supervised learning with graphs from multi-views tries to
+learn a classiﬁer by incorporating the complementary information from multi-
+views. The state-of-the-art methods conduct in a “one-combo-ﬁts-all” manner.
+That is, they linearly and independently combine either the metrics or the la-
+bel propagation (manifold ranking) results from multi-views and then build a
+model based on the combined results. Speciﬁcally, the metric fusion (cid:12)rst strat-
+egy [2] obtains a linear fusion of the metrics from multi-views, constructs a single
+similarity graph based on the fused metric, and conducts label propagation or
+manifold ranking on the similarity graph. Alternatively, the propagation fusion
+strategy [3, 5, 6] conducts label propagation or manifold ranking on each view
+ﬁrst, and then obtains a linear fusion of label propagation results based on label
+relevance ranking scores in multi-views as the overall label propagation results.
+More often than not, the similarities between various objects may be man-
+ifested diﬀerently by diﬀerent views. For example, two video clips that are the
+same advertisement video but in diﬀerent languages have similar video content
+but very diﬀerent audio content. At the same time, two video clips that are
+two advertisements from the same company for the same campaign on the same
+product may have similar audio content but diﬀerent video content. In such sit-
+uations, the one-combo-ﬁts-all methods may not perform well, since they use
+the same linear fusion from multi-views for all objects. Moreover, diﬀerent views
+in such methods don’t collaborate with each other to achieve consistency when
+performing fusion process.
+
+To tackle the problem, in this paper, we develop an iterative fusion approach,
+called SSMF (for semi-supervised metric fusion and cross-view label propaga-
+tion). SSMF fuses metrics and label propagation results from multi-views iter-
+atively until the fused metric and label propagation results converge simulta-
+neously. Views are weighted dynamically during the fusion process so that the
+adversary eﬀect of irrelevant views can be reduced eﬀectively. Here, the similar-
+ity in an irrelevant view contributes adversarially to the similarity measurement
+matching the ground truth. Speciﬁcally, in each iteration, there are two steps.
+In the semi-supervised metric fusion step, for each view we form a fused metric
+by combining the current metric of the view and the label propagation results
+from other views. Unlike the methods in [2, 4] that obtain a fused metric from
+multi-views without label information, the metric fusion step in our method
+fully utilizes the label information from all views. In the label propagation step,
+in each view we conduct label propagation using the fused metric. This step
+incorporates the complementary information from other views rather than from
+a single view only. Our SSMF method iteratively conducts the two steps until
+convergence.
+
+Title Suppressed Due to Excessive Length
+
+3
+
+The critical idea here is that the metric fusion and cross-view label propaga-
+tion processes are complementary to each other. Moreover, we fuse the similarity
+matrix from one view and label the relevance matrix from other views to yield
+a cross-view based query (label) driven similarity matrix.
+
+Contributions. Our major contributions can be summarized as follows.
+
+1. We develop an iterative fusion approach SSMF in this paper. SSMF fuses
+metrics and label propagation results from multi-views iteratively until the
+fused metric and label propagation results converge simultaneously. We prove
+the convergence in SSMF theoretically.
+
+2. To further improve the performance of SSMF, we extend it to WSSMF, a
+novel strategy that automatically generates diﬀerent weight parameters to
+views in the fusion process. WSSMF eﬀectively addresses the problem of
+irrelevant views that are undesirable to fuse in the fusion process for each
+iteration.
+
+3. Our comprehensive experiments on real image data sets show that our tech-
+niques signiﬁcantly outperform the state-of-the-art methods in terms of ac-
+curacy evaluated by varied metrics.
+
+2 Related Work
+
+To our best knowledge, our proposed technique is the ﬁrst co-training based
+method for multi-view and graph-based semi-supervised learning problem. Ex-
+isting one-combo-ﬁts-all methods linearly and independently combine either the
+metric (kernel) or the labeling propagation result from multiple views to yield a
+better performance than single view paradigms, as introduced in section 1.
+
+We remark that wang et al. [4] proposed a related Unsupervised based Metric
+Fusion (UMF for short) method. One may adapt UMF for multi-view based
+semi-supervised learning problem straightforwardly. However, There are several
+fundamental diﬀerences between this straightforward adaption of UMF [4] and
+SSMF. First, it fuses equal weight as suggested by UMF. Second and fore-
+most, Unlike the adapted UMF that fuses the pair-wise similarity metric in-
+formation, which cannot utilize the graph structure to evaluate the similarity
+between pair-wise objects. SSMF fuses label propagation and similarity metric
+information interactively for each view and at each iteration, the label prop-
+agation can be regarded as a variant of graph random walk, which eﬀectively
+utilize the graph structure to produce better similarity values among objects
+than simply fusing the initial pair-wise similarity suggested by UMF. Finally,
+the existence of irrelevant views may signiﬁcantly aﬀect learning results. While
+the UMF paradigm is unable to distinguish the diﬀerent contributions of diﬀer-
+ent views in a fusion based learning process, we devise an eﬀective process to
+iteratively identify the weights of views by taking the advantage of availability
+of label propagation result at each time stamp. Wang et al. [7] proposed another
+metric fusion technique against multi-view data via a cross-view based graph
+random walk approach, however, they studied the unsupervised case rather than
+semi-supervised learning studied in this paper.
+3 SSMF
+In this section, we present SSMF and describe its two nice properties, namely
+global consistency and local smoothness [8]. We ﬁrst review the prelimi-
+
+4
+
+Yang Wang, Jian Pei, Xuemin Lin, Qing Zhang
+
+naries. Then, we discuss SSMF using two views. Last, we present the general
+iterative form of SSMF with multi-views.
+
+3.1 Preliminaries
+
+Let X = {x1, x2,· · ·, xn} be a set of data points from M views, we construct
+M graphs each using a diﬀerent feature. Gg denotes a k-NN graph constructed
+on X using g-th feature. Speciﬁcally, Gg is constructed by connecting every two
+vertices xi and xj if one is among the k nearest neighbors of the other. Here,
+the nearest neighbors are computed using Euclidean distance between the g-th
+feature vectors of the images. The Euclidean distance between the g-th feature
+
+vectors of xi and xj is denoted as ||xi, xj||g. Wg denotes the edge aﬃnity matrix
+of Gg. Each entry Wg(i, j) in Wg represents the similarity between xi and xj
+according to the g-th feature vector. Wg(i, j) is deﬁned by a Gaussian kernel
+and is set to
+
+g/2σ2)
+
+∑
+
+(1)
+if there is an edge in Gg between xi and xj. Otherwise, Wg(i, j) is zero. Dg is
+the diagonal matrix of Gg where each element Dg(i, i) is deﬁned as Dg(i, i) =
+
+n
+j=1 Wg(i, j).
+Without loss of generality, assume the ﬁrst m points xi (i = 1, 2, . . . , m) are
+labeled points and the remaining points are unlabeled. Let the number of labels
+be c, and L ∈ Rn×c be the relevance labeling matrix with L(i, j) = 1, if xi is
+labeled by label j, denoted by L(xi) = j (1 ≤ j ≤ c), and 0 otherwise. Here,
+Similarly, let Rg ∈ Rn×c be the relevance score of unlabeled point xu belonging
+to label j regarding the g-th view. The closed form of optimal Rg is yielded by
+minimizing the objective function
+
+we assume each point is associated with a single class label from the label set.
+
+Wg(i, j) = exp(−||xi, xj||2
+
+n∑
+
+1
+2
+
+(
+i,j=1
+
+Wg(i, j)(
+
+1√
+n∑
+(Rg(j,·))2 + αg
+(Rg(i,·) − L(i,·))2)
+
+(Rg(i,·)
+
+Dg(i, i)
+
+i=1
+
+F(Rg) =
+
+1√
+
+−
+
+Dg(j, j)
+
+where Rg(i,·) and L(i,·) are the i-th row of Rg and L, respectively. The ﬁrst term
+that Rg(i,·) is similar to Rg(j,·) if xi and xj are proximate to each other. The
+
+in the right hand side of Eq. (2) represents the local smoothness, which means
+
+second term in Eq. (2) represents the global consistency, which means that the
+ﬁnal labeling matrix Rg should be consistent to the initial labeling matrix L.
+We minimize F(Rg) by setting ∂F(Rg)
+∂Rg
+
+= 0, and have
+
+(2)
+
+(3)
+
+g = (I − αgSg)
+R⋆
+
+−1L
+
+∑
+
+− 1
+g WgD
+
+− 1
+g
+
+2
+
+where Sg = D
+element Dg(i, i) =
+R⋆
+3.2 SSMF for Two Views
+
+2
+
+, Dg is the diagonal matrix with the i-th diagonal
+n
+j=1 Wg(i, j), and αg is a real value such that 0 < αg < 1.
+
+g can also be regarded as the label propagation result on Gg.
+
+Title Suppressed Due to Excessive Length
+
+5
+
+Instead of directly computing the similarity met-
+ric between any pair-wise points under unsuper-
+vised scenario [4], we achieve the similarity, un-
+der semi-supervised scenario, by indirectly mea-
+suring relevance between each point and all la-
+bels, formulated as labeling relevance matrix. As
+such, one can imagine that if both data points
+have large relevance regarding all labels, their
+similarity is large, otherwise, it is small. In or-
+der to learn semi-supervised metric regarding
+two views, we need to consider the following
+two challenges. That is, (1) the learned similar-
+ity metric should encode the relevance between
+data points and all labels. (2) the learned met-
+ric should well incorporate the complementary
+information from two views to achieve the con-
+sistency. Assume W[t+1]
+(g = 1, 2) denote the
+metric similarity matrix for g-th view in t + 1
+iterations, then we deﬁne the following semi-supervised fusion strategy:
+
+g
+
+Semi-supervised
+Fig. 1.
+metric fusion step regarding
+the ﬁrst view formulated as
+Eq. (4).
+
+W[t+1]
+
+1
+
+W[t+1]
+
+2
+
+= Q[t]
+
+1 Rn[t]
+
+2 (Rn[t]
+
+2 )T (Q[t]
+
+1 )T + λI
+
+= Q[t]
+
+2 Rn[t]
+
+1 (Rn[t]
+
+1 )T (Q[t]
+
+2 )T + λI
+
+(4)
+
+(5)
+
+∑
+
+where Q[t]
+g
+W[t]
+g (i,j)
+j=1 W[t]
+n
+
+g (i,j)
+
+(g = 1, 2) is the normalized aﬃnity matrices such that Q[t]
+, Rn[t]
+
+, the goal of using normalized form is
+
+g (i, j) =
+
+∑
+
+g (i, j) =
+
+R[t]
+g (i,j)
+j=1 R[t]
+c
+
+g (i,j)
+
+to avoid the huge diﬀerence in scale of the label relevance matrices in diﬀerent
+views. I is identity matrix, and λI is incorporated to make SSMF robust to the
+noise. To better explain the above fusion strategy, we take Eq. (4) as an example
+of reﬁning the metric for the ﬁrst view by applying SSMF, as illustrated in Fig. 1.
+1 Rn[t]
+Intuition. We divide the right-hand-side of Eq. (4) into two parts, as Q[t]
+2 ,
+and its transpose (Rn[t]
+2 for any iter-
+ation t
+
+1 )T , we study each entry of Q[t]
+
+2 )T (Q[t]
+
+1 Rn[t]
+
+n∑
+
+(Q[t]
+
+1 Rn[t]
+
+2 )(i, y) =
+
+Q[t]
+
+1 (i, m)Rn[t]
+
+2 (m, y)
+
+(6)
+
+m=1
+
+1 Rn[t]
+
+As illustrated in Fig. 1, (Q[t]
+2 )(i, y) represents the fused relevance scores be-
+tween the y-th label and xi in the ﬁrst view, which can be seen as the summation
+of propagation of label relevance score between xm and y-th label formulated
+as Rn[t]
+2 (m, y), through the edge weight equivalent to similarity between xi and
+xm (m ̸= i), formulated as Q[t]
+1 (i, m) to xi. Such (Q[t]
+2 )(i, y) is obtained
+1 (i, m), m ̸= i, from the ﬁrst view, and label
+by incorporating the metric, Q[t]
+2 (m, y), m ̸= i, from the second view to make the in-
+relevance matrix, Rn[t]
+corporation of the complementary information from two views. Following this
+principle, the reﬁned W[t+1]
+(i, j) in next iteration t + 1, for the ﬁrst view, is
+yielded by considering relevance score between all labels and both two points
+
+1 Rn[t]
+
+1
+
+),1(][2yRnt),2(][2yRnt),(][2ynRnt),2()2,(][2][1yRniQtt×),(),(][2][1ynRnniQtt×),1()1,(][2][1yRniQtt×∑=nmttymRnmiQ1][2][1),(),(                              First view6
+
+Yang Wang, Jian Pei, Xuemin Lin, Qing Zhang
+
+One natural question is how to calculate R[t]
+
+(xi and xj, respectively), while eﬀectively incorporates the complementary in-
+(cid:4)
+formation from two views. Eq. (5) may be conducted similarly.
+g , and its normalized form Rn[t]
+g
+for each iteration t, we propose to adopt the general iterative form in the next
+section. It has the following two nice features: (1) calculating R⋆
+g via Eq. (3)
+is costly due to inverse matrix computation. (2) iterative label propagation is
+essentially relying on the graph random walk, which will improve the metric
+similarity between points and points (and label-data relevance) by exploring the
+graph structure.
+
+3.3 The General Iterative Form of SSMF
+
+We can get R[t]
+
+g (g = 1, 2, . . . , M ) iteratively by
+
+R[t]
+
+g = αgP[t]
+
+g
+
++ (1 − αg)L
+
+g R[t−1]
+(g = 1, 2, . . . , M ), and 0 ≤ αg ≤ 1. P[t]
+
+g
+
+(7)
+
+where P[t]
+symmetric matrix. L is the initial labeling matrix mentioned in Section 3.1.
+
+g (i,j)
+g (i,i)+D[t]
+
+g (i, j) =
+
+g (j,j)
+
+D[t]
+
+is a
+
+W[t]
+
+Generalizing Eqs. (4) and (5) regarding two views, W[t]
+
+g may be calculated
+
+as follows for multi-views.
+
+W[t+1]
+
+g
+
+= Q[t]
+g (
+
+∑
+
+∑
+
+j̸=g Rn[t]
+M − 1
+
+j
+
+)(
+
+j )T
+
+j̸=g(Rn[t]
+M − 1
+
+)(Q[t]
+
+g )T + λI
+
+(8)
+
+g associated with the matrix W[t]
+
+The iterative form of SSMF with multi-view by iteratively applying Eqs. (7)
+and (8) represents a novel label propagation process. Speciﬁcally, each weighted
+graph G[t]
+g , incorporates the label prop-
+(j ̸= g) from other views, as shown in Eq. (8),
+agation results inherent in Rn[t]
+j
+and hence we call the label propagation formulated as Eq. (7) as cross view
+label propagation.
+
+g or P[t]
+
+Now, we are ready to prove the convergence of SSMF.
+
+Theorem 1. The iterative form of SSMF formulated in Eq. (7) converges.
+
+It suﬃces to prove the convergence on one view. Following Eq. (7), we have
+
+R[t]
+
+g = αt
+
+gL
+
+αi
+g
+
+P[j]
+g
+
+(9)
+
+where R[0]
+
+g = L. Apparently, since 0 < αg < 1,
+
+t−1∑
+
+i∏
+
+i=1
+
+j=1
+
+t∏
+
+i=1
+
+g + (1 − αg)L
+P[i]
+t∏
+
+t→∞ αt
+lim
+
+gL[
+
+i=1
+
+P[i]
+
+g ](i, j) = 0
+
+Moreover, the largest eigenvalue of P[i]
+g (i = 1, 2, . . . , t) is no more than 1 accord-
+ing to the Gershgorin circle theorem. For the second term in Eq. (9), (1 − αg)L
+
+Title Suppressed Due to Excessive Length
+
+7
+
+Algorithm 1: The algorithm of SSMF
+
+Input: Initial aﬃnity matrix W [1]
+
+g (g = 1, 2,(cid:1)(cid:1),(cid:1), M ), R[0]
+
+g , αg, λ , initial label
+
+relevance matrix L in Eq. (7), the convergence threshold ϵ.
+
+Output: The ﬁnal label relevance matrix R⋆
+
+SSM F
+
+1 for g = 1,(cid:1) (cid:1) (cid:1), M do
+
+2
+
+3
+
+t = 0.
+Obtaining the label propagation R[1]
+
+g by Eq. (7)
+
+4 t = 1.
+5 repeat
+6
+
+∑
+
+for g = 1,(cid:1) (cid:1) (cid:1), M do
+j̸=g Rn[t]
+g = Q[t]
+M(cid:0)1
+g (
+= Z[t]
+g (Z[t]
+= αgP[t+1]
+
+Z[t]
+W[t+1]
+R[t+1]
+t = t + 1;
+
+g R[t]
+
+g
+
+g
+
+j
+
+)
+
+g )T + λI
+
+g + (1 (cid:0) αg)L
+
+7
+
+8
+
+9
+
+10
+
+∑
+
+11 until change is smaller than ϵ;
+12 R⋆
+SSM F =
+13 // (Rg)⋆
+
+(Rg )⋆
+SSM F
+M
+
+M
+g=1
+
+;
+
+j=1
+
+P[j]
+
+j=1
+
+t−1
+i=1
+
+i∏
+
+of series
+
+∑
+
+∑
+
+t−1
+i=1 αi
+1[
+
+sider the series
+
+SSM F is the converged relevance label matrix in the g-th view.
+
+i∏
+is a constant matrix for all αi
+g ] at any step i, thus, we only need to con-
+g[
+g ]. We denote the i-th term by Hg[i] and study
+P[j]
+the convergence of entry Hg[i](l, m). We only need to prove the convergence
+i∏
+g, since
+
+Hg[i](l, m), where Hg[i](l, m) = αi
+g[
+
+j=1
+We construct the series
+
+g ](l, m) < 1, which can be easily veriﬁed by simple arithmetic operations.
+
+∑
+since [Hg[i]](l, m) ≤ αi
+g and each item [Hg[i]](l, m) is positive.
+∑
+
+g (0 < αg < 1). Obviously, the series converges,
+(cid:4)
+SSM F be the convergent label relevance matrix regarding the g-th
+view by interactively applying Eq. (7) (cross-view label propagation) and Eq. (8)
+(semi-supervised metric fusion). The ﬁnal label relevance matrix regarding multi-
+views is R⋆
+. We summarize the algorithm of SSMF in
+Algorithm 1.
+
+g ](l, m) < αi
+
+t−1
+i=1 αi
+
+Let (Rg)⋆
+
+SSM F =
+
+(R⋆
+
+g)SSM F
+
+[
+
+P[j]
+
+i∏
+
+j=1
+
+P[j]
+
+M
+g=1
+
+M
+
+One important issue that SSMF does not consider is that there may be some
+irrelevant views, and simply fusing all views using the same weight in Eq. (8)
+may not achieve the best overall performance if there are irrelevant views during
+the fusion process. To address this issue, we devise an eﬀective learning method
+to assign a weight to each view in each fusion iteration. Consequently, we extend
+SSMF to WSSMF, which will be described in next section.
+
+4 WSSMF: Learning Weights for SSMF
+
+The basic idea is to consider the labeling result of cross-view label propagation
+for unlabeled points in the set U in each iteration. Two views are regarded
+
+8
+
+Yang Wang, Jian Pei, Xuemin Lin, Qing Zhang
+
+consistent if their labeling results are similar. Speciﬁcally, we denote by V[t]
+the
+(1 ≤ j ̸= i ≤ M ) are,
+i
+i-th view in iteration t. The more consistent V[t]
+the larger the weight parameter θ[t]
+j . Note that the labeling result of
+cross-view label propagation may be diﬀerent at various iterations. Therefore,
+we calculate the weight parameter in diﬀerent iterations. We deﬁne a function
+D(V[t]
+j ) in Eq. (10) to measure the mismatch between i-th and j-th view
+in terms of cross-view labeling propagation result.
+
+ij is for V[t]
+
+i and V[t]
+
+i , V[t]
+
+j
+
+∑
+
+D(V[t]
+
+i , V[t]
+
+j ) =
+
+B(L(x[t]
+
+u [i]), L(x[t]
+
+u [j]))
+
+(10)
+
+u [i]), L(x[t]
+
+where B(L(x[t]
+operator, and L(x[t]
+We have L(x[t]
+
+u [i]) = max
+
+l
+
+u )̸=0
+u [i])− L(x[t]
+
+u ∈U,L(x[t]
+x[0]
+u [j])) = ||L(x[t]
+i (u, l)}.
+
+{Rn[t]
+
+u ) is the largest label relevance score of x[t]
+
+u [j])||, ||·|| is the absolute value
+u regarding all labels.
+
+j
+
+i , V[t]
+
+is deﬁned as
+
+Initially, we set the label relevance score of all unlabeled points to be 0,
+j at
+j are.
+
+i and V[t]
+i and V[t]
+
+and D(V[t]
+iteration t. The larger D(V[t]
+For V[t]
+
+i , V[t]
+i , the weight parameter θ[t]
+
+j ) describes the inconsistency degree between V[t]
+j ) is, the more inconsistent V[t]
+ij (i ̸= j) for V[t]
+∑
+i , V[t]
+j )
+h̸=i D(V[t]
+ji and 0 ≤ θ[t]
+
+ij = 1 − D(V[t]
+θ[t]
+
+Immediately, we have θ[t]
+
+i , V[t]
+h )
+≤ 1. They are the entries in the
+coeﬃcient symmetric matrix in iteration t, denoted by Θ[t]. In iteration t, the
+j-th view (1 ≤ j ̸= i ≤ M ) is said to be irrelevant with respect to the i-th
+view if θ[t]
+, otherwise, the j-th view is said to be relevant. For the
+i-th view, we denote the set of relevant views at iteration t by Re[t]
+i .
+
+∑
+g̸=i θ[t]
+M−1
+
+ij = θ[t]
+
+Instead of computing global irrelevant views explicitly, for the i-th view, we
+only fuse the views from Re[t]
+in iteration t, and set the correlation strength
+i
+weight to be 0 for irrelevant views. Combining Eq. 11 and Eq. 8, we have the
+Weighted SSMF (WSSMF for short) for multi-views, which iteratively applies
+Eq. 7 and Eq. 12 until convergence.
+
+ij <
+
+(11)
+
+ij
+
+ig
+
+∑
+
+W[t+1]
+
+g
+
+= Q[t]
+g (
+
+∑
+
+j∈Re[t]
+
+g
+
+(
+
+) ×
+
+g
+
+j
+
+g
+
+j∈Re[t]
+
+θ[t]
+gjRn[t]
+|Re[t]
+|
+gjRn[t]
+(θ[t]
+|Re[t]
+|
+∑
+
+j )T
+
+g
+
+)(Q[t]
+
+g )T + λI
+
+(12)
+
+Like SSMF, WSSMF also converges, which can be immediately proved in the
+same manner as Theorem 1. Therefore, the ﬁnal optimal label relevance matrix
+can be obtained as R⋆
+, where M is the number of
+views, (Rg)⋆
+W SSM F is the convergent label relevance matrix in the g-th view
+
+W SSM F =
+
+W SSM F
+M
+
+M
+g=1
+
+(Rg)⋆
+
+Title Suppressed Due to Excessive Length
+
+9
+
+obtained using WSSMF. Based on Algorithm 1, we generate the algorithm of
+
+WSSMF by replacing Z[t]
+in line 8 with Eq. 12.
+4.1 Complexity Analysis
+
+g in line 7 with Z[t]
+
+g = Q[t]
+g (
+
+∑
+
+j∈Re
+[t]
+g
+
+θ[t]
+gj Rn[t]
+|Re[t]
+g |
+
+j
+
+), and W[t+1]
+
+g
+
+Now, we analyze the time complexity of each iteration in SSMF and WSSMF.
+
+The cost of SSMF mainly comes from two parts: cross-view label propagation
+and semi-supervised metric fusion. The iterative cross-view label propagation in
+Line 9 of Algorithm 1 takes O(M n2c) time, and the same time complexity holds
+for semi-supervised metric fusion in Lines 7-8. We remark that all the above cost
+is from the matrix multiplication rather than matrix inverse computation. It is
+well known that matrix multiplication implementation without inverse compu-
+tation is eﬃcient. Similar to SSMF, WSSMF also needs O(M n2c) time for both
+metric fusion and cross-view label propagation. In addition, O(M 2n) time is
+needed to obtain the view correlation matrix Θ in each iteration regarding M
+views. Therefore, the overall time complexity for WSSMF is O(M n2c)+O(M 2n).
+As observed in our experiments(refer to Fig 3), both SSMF and WSSMF con-
+verge within quite limited iterations for most cases (less than 65 times).
+
+5 Experiments
+
+We evaluate both SSMF and WSSMF using multi-view content based image
+retrieval (CBIR) and multi-label image classiﬁcation on real data sets. We set
+the convergence threshold ϵ to 10
+
+−4 for all methods.
+
+In our experiments, we compare with the following state-of-the-art multi-
+view graph based methods for both multi-view CBIR and multi-label image
+classiﬁcation.
+
+{ The multi-modality graph (MMG) method [3], which uses multiple graph
+models under diﬀerent views. The ﬁnal ranking score vector is obtained
+by combining the independent label propagation (manifold ranking) results
+carried by each image in each view with diﬀerent weights.
+
+{ The averaged distance of multiple feature based metric (ADF) method [2],
+which constructs a single relevance graph using the metric of average distance
+from multiple views.
+
+{ The unsupervised metric fusion (UMF) method [4], which conducts metric
+fusion without considering label propagation result. It is adapted to tackle
+multi-view graph-based semi-supervised learning as follows. We ﬁrst obtain
+the convergent aﬃnity matrix Wg (g = 1, 2, . . . , M ) for the g-th view by ap-
+plying UMF, and then obtain the ranking score vector by optimizing Eq. (2),
+where the aﬃnity matrix Wg is the fused aﬃnity matrix using UMF on
+multi-views.
+
+5.1 Multi-view Content Based Image Retrieval (CBIR)
+Multi-view CBIR is a typical problem where graph based multi-view semi-
+supervised learning is extensively applied. Speciﬁcally, a query image is a labeled
+
+10
+
+Yang Wang, Jian Pei, Xuemin Lin, Qing Zhang
+
+data object in our model, and the label relevance matrix Rg ∈ Rn×c in Eq. (2)
+is reduced to a ranking score vector rg ∈ Rn, and Rg(i,·) ∈ Rn is reduced to
+rg(i) ∈ R, which represents the relevance score between xi and the query image
+(labeled image). L ∈ Rn×c in Eq. (2) is reduced to an n dimensional vector
+Y ∈ Rn with the i-th entry to be 1 if xi is the query image, and 0 otherwise.
+
+We set the number of nearest neighbors k to 20 to calculate the metric
+distance in Eq. (1) for all views, which is consistent with the UMF method [4].
+Similar to [9], we set αg to 0.99 in Eq. (7) for all views, set λ to 1 in both Eq. (8)
+and Eq. (12). All methods are tested on the COREL5K data set [1], which
+consists of 5000 images in 50 categories. Each category contains 100 images. Due
+to the same number of images in each category, we use the precision-scope [3] as
+the evaluation metric. We use HOG, color histogram, RGB-SIFT and Pyramid
+wavelet texture feature to construct diﬀerent views, most of them are utilized
+by MMG. For each method, we select every sample of 5000 images as the query
+image (labeled objects) each time, and obtain the average precision value and its
+statistical distribution regarding all 5000 samples, shown using 3 points (mean,
++1 standard deviation, and -1 standard deviation) in Fig. 2(a).
+
+(a)
+
+(b)
+
+Fig. 2. (a) Top-s precision on COREL5K data set. (b) Classiﬁcation accuracy with
+respect to sample rate on Caltech-101 image data set.
+
+Unsurprisingly, WSSMF outperforms the other methods in top-s average pre-
+cision, since it can better achieve the consistency from multi-views than the other
+methods. In addition, it can eﬀectively address the problem of irrelevant views
+at each iteration. SSMF is the next after WSSMF. SSMF does not handle the
+problem of irrelevant views. To demonstrate the diﬀerence, we take one query
+image from the “boat” category, and list the coeﬃcient matrix at the seventh
+iteration, denoted by Θ[7] obtained by WSSMF, as follows.
+
+HOG Texture Color RGB-SIFT
+
+Θ[7] =
+
+HOG
+
+Texture
+Color
+
+1
+
+0.462 0.246
+0.292
+
+0.462
+0.246 0.292
+
+1
+
+1
+
+RGB-SIFT 0.292 0.246 0.462
+
+0.292
+0.246
+0.462
+
+1
+
+The matrix Θ[7] indicates that Color histogram and RGB-SIFT are the ir-
+relevant views for HOG. Unlike the other methods, WSSMF sets the weight of
+irrelevant views to 0 for HOG at this iteration. Like SSMF, UMF (1) does not
+
+P@10P@20P@30P@40P@50P@60P@70P@80P@90P@10000.10.20.30.40.50.60.7  SSMFUMFMMGADFWSSMF20%40%60%80%0.50.60.70.80.9Training data sizeClassification accuracyWSSMFSSMFUMFMMGADFTitle Suppressed Due to Excessive Length
+
+11
+
+consider the irrelevant view detection, either. Moreover, (2) UMF does not fuse
+label propagation results during the fusion process, (3) as such UMF fails to
+further exploring the graph structure to improve the metric similarity like SSMF
+and WSSMF as discussed in section 2. Consequently, UMF is inferior to SSMF.
+Both MMG and ADF perform worse than the others. MMG outperforms ADF
+in most cases, since MMG fully explores the graph structure for diﬀerent views,
+and it linearly combines the independent label propagation results with diﬀerent
+weights. ADF, however, is diﬀerent from MMG. It assigns the same weight to
+all views in combining the label propagation results, the single graph associated
+with averaged metric obstructs the graph structure of original inherent individual
+views. However, MMG is inferior to SSMF and WSSMF, since such one-combo-
+ﬁts-all late fusion method is undesirable to achieve the consistency among all
+views by independently fusing all the label propagation result from all views.
+Worse still, it cannot well handle the irrelevant views issue.
+
+Fig. 3 shows the 5-point box-plots (maxi-
+mum, minimum, mean, +1 standard deviation,
+and -1 standard deviation) of number of iter-
+ations and running time of all queries in all
+methods. Both WSSMF and SSMF use more
+iterations on average and sot longer running
+time than ADF and UMF, because ADF and
+UMF construct only one similarity graph. In-
+stead, WSSMF, SSMF and MMG construct mul-
+tiple graphs. WSSMF and SSMF need less it-
+erations on average to reach convergence than
+MMG, since the cross-view based fusion method
+can speed up the process of achieving consis-
+tency. However, the running time of WSSMF and
+SSMf is similar to that of MMG, since more ma-
+trix multiplication is performed during each it-
+eration than MMG.
+
+5.2 Multi-view based multi-label image
+classi(cid:12)cation
+
+Fig. 3. Comparison of num-
+ber of iterations (top ﬁgure)
+and running time (bottom
+ﬁgure).
+
+Multi-view based multi-label
+image classiﬁca-
+tion can be regarded as multi-view based semi-
+supervised learning with graphs. The Caltech-101 data set (http://www.
+vision.caltech.edu/Image_Datasets/Caltech101/) is used to test multi-
+label image classiﬁcation. It contains 9146 images organized into 101 categories.
+The number of images in diﬀerent categories ranges from 40 to 800. We set
+
+c = 101 and n = 9146 in the label relevance matrix Rg ∈ Rn×c and L ∈ Rn×c in
+
+Eq. (2), along with k = 20 in Eq. (1) and λ = 1 in Eq. (12).
+
+We use the same sample rate to draw a random sample of images from each
+category as labeled images. The rest of images are treated as unlabeled. Each
+experiment is repeated 5 times, and the average value is reported. The classiﬁ-
+cation accuracy on all unlabeled images is used to evaluate diﬀerent methods.
+HOG, color histogram, pyramid wavelet texture feature and SIFT are used to
+construct diﬀerent views. The results are shown in Fig. 2(b).
+
+WSSMFSSMFUMFMMGADF30405060708090Iteration numberWSSMFSSMFUMFMMGADF24681012Running time (seconds)12
+
+Yang Wang, Jian Pei, Xuemin Lin, Qing Zhang
+
+WSSMF outperforms the other methods. SSMF is the second best method.
+The results verify the advantages of our iterative fusion methods. We also ob-
+serve that the diﬀerence among diﬀerent methods decreases as the sample rate
+increases, since a higher sample rate makes the problem less challenging.
+6 Conclusion
+
+In this paper, we propose a novel iterative fusion technique for graph based semi-
+supervised learning from multi-views. The central idea is to fuse metrics and label
+propagation results from multi-views iteratively and weight views dynamically.
+The experimental results clearly show that our new methods outperform the
+state-of-the-art methods on real data sets. As future work, we will investigate
+how to fuse selective labeling results from multi-view based graphs rather than
+tackling all the data points including both informative and noise data points.
+We will also investigate active learning based methods for better eﬀectiveness
+and eﬃciency.
+
+Acknowledgment. Jian Pei’s Research is supported in part by an NSERC
+Discovery Grant and a BCFRST NRAS Endowment Research Team Program
+Project. Xuemin Lin is supported by ARC DP0987557, ARC DP110102937,
+ARC DP120104168 and NSFC61021004. All opinions, ﬁndings, conclusions and
+recommendations in this paper are those of the authors and do not necessarily
+reﬂect the views of the funding agencies.
+
+References
+
+1. P. Duygulu, K. Barnard, J. D. Freitas, and D. Forsyth. Object recognition as
+machine translation: Learning a lexicon for a ﬁxed image vocabulary. In ECCV,
+2002.
+
+2. Y. Huang, Q. Liu, S. Zhang, and D. N. Metaxas. Image retrieval via probabilistic
+
+hypergraph ranking. In CVPR, 2010.
+
+3. H. Tong, J. He, M. Li, C. Zhang, and W. Ma. Graph based multi-modality learning.
+
+In ACM MM, 2005.
+
+4. B. Wang, J. Jiang, W. Wang, Z. Zhou, and Z. Tu. Unsupervised metric fusion by
+
+cross diﬀusion. In CVPR, 2012.
+
+5. M. Wang, X. Hua, R. Hong, J. Tang, G. Qi, and Y. Song. Uniﬁed video annotation
+via multigraph learning. IEEE Trans. Circuits Syst. Video Techn, 19(5):733–746,
+2009.
+
+6. Y. Wang, M. A. Cheema, X. Lin, and Q. Zhang. Multi-manifold ranking: Using
+
+multiple features for better image retrieval. In PAKDD, 2013.
+
+7. Y. Wang, X. Lin, and Q. Zhang. Towards metric fusion on multi-view data: a
+
+cross-view based graph random walk approach. In ACM CIKM, 2013.
+
+8. D. Zhou, O. Bousquet, T. N. Lal, J. Weston, and B. Schlkopf. Learning with local
+
+and global consistency. In NIPS, 2003.
+
+9. D. Zhou, J. Weston, A. Gretton, O. Bousquet, and B. Schlkopf. Ranking on data
+
+manifolds. In NIPS, 2003.
+
+10. X. Zhu. Semi-supervised learning with graphs. PhD thesis,Carnegie Mellon Uni-
+
+versity, 2005.
+
+
